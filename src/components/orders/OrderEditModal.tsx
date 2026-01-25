@@ -36,8 +36,8 @@ export default function OrderEditModal({ order, onClose, onSuccess }: OrderEditM
 
     try {
       const supabase = createClient();
-      const { error } = await supabase
-        .from('orders')
+      const { error } = await (supabase
+        .from('orders') as any)
         .update({
           supplier,
           status,

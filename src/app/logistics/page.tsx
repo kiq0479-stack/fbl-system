@@ -84,7 +84,7 @@ export default function LogisticsDashboard() {
     today.setHours(0, 0, 0, 0);
 
     const alerts: OrderAlert[] = [];
-    orders.forEach(order => {
+    (orders as { id: string; order_number: string; eta: string | null; status: string }[]).forEach(order => {
       if (!order.eta) return;
       const etaDate = new Date(order.eta);
       etaDate.setHours(0, 0, 0, 0);
@@ -120,7 +120,8 @@ export default function LogisticsDashboard() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const alerts: InboundAlert[] = inbounds
+    type InboundRow = { id: string; request_number: string; expected_date: string; warehouse_name: string; total_pallets: number; status: string };
+    const alerts: InboundAlert[] = (inbounds as InboundRow[])
       .filter(inbound => {
         const expectedDate = new Date(inbound.expected_date);
         expectedDate.setHours(0, 0, 0, 0);
@@ -135,7 +136,7 @@ export default function LogisticsDashboard() {
         total_pallets: inbound.total_pallets,
       }));
 
-    const totalPallets = inbounds.reduce((sum, i) => sum + (i.total_pallets || 0), 0);
+    const totalPallets = (inbounds as InboundRow[]).reduce((sum, i) => sum + (i.total_pallets || 0), 0);
     setInboundStats({ pending: totalPallets, alerts });
   };
 
@@ -156,7 +157,7 @@ export default function LogisticsDashboard() {
       arrived: '도착완료',
     };
 
-    orders?.forEach(order => {
+    (orders as { id: string; order_number: string; status: string; updated_at: string }[] | null)?.forEach(order => {
       activities.push({
         id: `order-${order.id}`,
         type: 'order',
@@ -179,7 +180,7 @@ export default function LogisticsDashboard() {
       cancelled: '취소됨',
     };
 
-    inbounds?.forEach(inbound => {
+    (inbounds as { id: string; request_number: string; status: string; warehouse_name: string; updated_at: string }[] | null)?.forEach(inbound => {
       activities.push({
         id: `inbound-${inbound.id}`,
         type: 'inbound',

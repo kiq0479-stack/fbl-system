@@ -38,8 +38,8 @@ export default function WarehouseEditModal({
     const supabase = createClient();
 
     try {
-      const { error } = await supabase
-        .from('inventory')
+      const { error } = await (supabase
+        .from('inventory') as any)
         .update({
           pallet_count: palletCount,
           extra_boxes: extraBoxes,

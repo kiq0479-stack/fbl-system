@@ -72,7 +72,7 @@ export async function POST(request: Request) {
         if (productData && productData.items && Array.isArray(productData.items)) {
           for (const item of productData.items) {
             // 로켓그로스 vendorItemId는 rocketGrowthItemData에 있음
-            const rocketData = item.rocketGrowthItemData;
+            const rocketData = (item as any).rocketGrowthItemData;
             if (!rocketData) continue;
             
             const vid = String(rocketData.vendorItemId);
@@ -134,16 +134,16 @@ export async function POST(request: Request) {
     
     for (const product of uniqueProducts) {
       // 먼저 SKU로 기존 상품 조회
-      const { data: existing } = await supabase
-        .from('products')
+      const { data: existing } = await (supabase
+        .from('products') as any)
         .select('id')
         .eq('sku', product.sku)
         .single();
       
       if (existing) {
         // 기존 상품 업데이트 (name, barcode, external_sku 업데이트, 다른 필드는 유지)
-        const { error: updateError } = await supabase
-          .from('products')
+        const { error: updateError } = await (supabase
+          .from('products') as any)
           .update({
             name: product.name,
             barcode: product.barcode,
@@ -154,8 +154,8 @@ export async function POST(request: Request) {
         if (!updateError) updatedCount++;
       } else {
         // 새 상품 추가
-        const { error: insertError } = await supabase
-          .from('products')
+        const { error: insertError } = await (supabase
+          .from('products') as any)
           .insert(product);
         
         if (!insertError) addedCount++;

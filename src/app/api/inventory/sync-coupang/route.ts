@@ -51,12 +51,12 @@ export async function POST() {
     let addedCount = 0;
     let updatedCount = 0;
 
-    for (const product of products) {
+    for (const product of (products as { id: string; sku: string; name: string }[])) {
       const coupangQty = inventoryMap.get(product.sku) || 0;
       
       // 기존 쿠팡 재고 조회
-      const { data: existing } = await supabase
-        .from('inventory')
+      const { data: existing } = await (supabase
+        .from('inventory') as any)
         .select('id, quantity')
         .eq('product_id', product.id)
         .eq('location', 'coupang')
@@ -65,16 +65,16 @@ export async function POST() {
       if (existing) {
         // 기존 재고 업데이트
         if (existing.quantity !== coupangQty) {
-          await supabase
-            .from('inventory')
+          await (supabase
+            .from('inventory') as any)
             .update({ quantity: coupangQty, updated_at: new Date().toISOString() })
             .eq('id', existing.id);
           updatedCount++;
         }
       } else if (coupangQty > 0) {
         // 새 재고 추가 (재고가 있는 경우만)
-        await supabase
-          .from('inventory')
+        await (supabase
+          .from('inventory') as any)
           .insert({
             product_id: product.id,
             location: 'coupang',

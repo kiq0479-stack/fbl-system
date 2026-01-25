@@ -42,13 +42,13 @@ export async function POST(request: NextRequest) {
       .from('products')
       .select('id, name, sku');
 
-    if (!products) {
+    if (!products || products.length === 0) {
       return NextResponse.json({ error: '상품 목록을 가져올 수 없습니다.' }, { status: 500 });
     }
 
     // 상품명 -> 상품 ID 매핑
     const productByName = new Map<string, { id: string; sku: string }>();
-    products.forEach(p => {
+    (products as { id: string; name: string; sku: string }[]).forEach(p => {
       productByName.set(p.name, { id: p.id, sku: p.sku });
     });
 
@@ -111,15 +111,15 @@ export async function POST(request: NextRequest) {
 
       // 상품 테이블에 파렛트당 박스 수량 업데이트
       if (palletQty) {
-        await supabase
-          .from('products')
+        await (supabase
+          .from('products') as any)
           .update({ pallet_qty: palletQty })
           .eq('id', product.id);
       }
 
       // 기존 창고 재고 조회
-      const { data: existing } = await supabase
-        .from('inventory')
+      const { data: existing } = await (supabase
+        .from('inventory') as any)
         .select('id, quantity')
         .eq('product_id', product.id)
         .eq('location', 'warehouse')
@@ -127,8 +127,8 @@ export async function POST(request: NextRequest) {
 
       if (existing) {
         // 업데이트
-        await supabase
-          .from('inventory')
+        await (supabase
+          .from('inventory') as any)
           .update({ 
             quantity: warehouseQty, 
             pallet_count: palletCount,
@@ -140,8 +140,8 @@ export async function POST(request: NextRequest) {
         results.push({ name: excelName, action: 'updated', qty: warehouseQty, palletCount, extraBoxes, palletQty });
       } else {
         // 추가
-        await supabase
-          .from('inventory')
+        await (supabase
+          .from('inventory') as any)
           .insert({
             product_id: product.id,
             location: 'warehouse',
