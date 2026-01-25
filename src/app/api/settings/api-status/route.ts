@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getCoupangConfig, getRocketGrowthInventory } from '@/lib/coupang';
+import { getCoupangAccounts, getRocketGrowthInventory } from '@/lib/coupang';
 
 interface ApiStatus {
   name: string;
@@ -57,70 +57,99 @@ export async function GET() {
     });
   }
 
-  // 2. 쿠팡 API 상태 확인
-  try {
-    const vendorId = process.env.COUPANG_VENDOR_ID;
-    const accessKey = process.env.COUPANG_ACCESS_KEY;
-    const secretKey = process.env.COUPANG_SECRET_KEY;
-
-    if (!vendorId || !accessKey || !secretKey) {
-      apis.push({
-        name: '쿠팡 Open API',
-        description: '쿠팡 마켓플레이스 연동 (로켓그로스)',
-        status: 'not_configured',
-        lastCheck: now,
-        details: {
-          'Vendor ID': vendorId ? `${vendorId.substring(0, 4)}****` : '미설정',
-          'Access Key': accessKey ? `${accessKey.substring(0, 8)}****` : '미설정',
-          'Secret Key': secretKey ? '설정됨' : '미설정',
-        },
-      });
-    } else {
-      // 실제 API 호출로 연결 테스트
-      const config = getCoupangConfig();
-      const response = await getRocketGrowthInventory(config, vendorId, {});
-
-      // 쿠팡 API는 code가 숫자 0 또는 문자열 "SUCCESS"일 수 있음
-      // data 배열이 있으면 성공으로 간주
+  // 2. 쿠팡 API 상태 확인 - 모든 계정
+  const accounts = getCoupangAccounts();
+  
+  for (const account of accounts) {
+    try {
+      const config = {
+        vendorId: account.vendorId,
+        accessKey: account.accessKey,
+        secretKey: account.secretKey,
+      };
+      
+      const response = await getRocketGrowthInventory(config, account.vendorId, {});
       const isSuccess = response.data && Array.isArray(response.data);
 
       apis.push({
-        name: '쿠팡 Open API',
-        description: '쿠팡 마켓플레이스 연동 (로켓그로스)',
+        name: `쿠팡 Open API (${account.name})`,
+        description: `쿠팡 마켓플레이스 연동 - ${account.name}`,
         status: isSuccess ? 'connected' : 'error',
         lastCheck: now,
         details: {
-          'Vendor ID': `${vendorId.substring(0, 4)}****`,
-          'Access Key': `${accessKey.substring(0, 8)}****`,
+          'Vendor ID': account.vendorId,
+          'Access Key': account.accessKey,
           'API Version': 'v2',
         },
-        error: isSuccess ? undefined : `API Response: ${JSON.stringify(response).substring(0, 100)}`,
+        error: isSuccess ? undefined : `API Response: ${JSON.stringify(response).substring(0, 200)}`,
+      });
+    } catch (error) {
+      apis.push({
+        name: `쿠팡 Open API (${account.name})`,
+        description: `쿠팡 마켓플레이스 연동 - ${account.name}`,
+        status: 'error',
+        lastCheck: now,
+        details: {
+          'Vendor ID': account.vendorId,
+          'Access Key': account.accessKey,
+        },
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  } catch (error) {
+  }
+
+  if (accounts.length === 0) {
     apis.push({
       name: '쿠팡 Open API',
-      description: '쿠팡 마켓플레이스 연동 (로켓그로스)',
-      status: 'error',
+      description: '쿠팡 마켓플레이스 연동',
+      status: 'not_configured',
       lastCheck: now,
       details: {
-        'Vendor ID': process.env.COUPANG_VENDOR_ID ? `${process.env.COUPANG_VENDOR_ID.substring(0, 4)}****` : '미설정',
+        'Vendor ID': '미설정',
+        'Access Key': '미설정',
       },
-      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 
-  // 3. 프록시 서버 상태 (설정된 경우)
+  // 3. 프록시 서버 상태
   const proxyUrl = process.env.PROXY_URL;
   if (proxyUrl) {
+    // http://IP:PORT 또는 http://user:pass@IP:PORT 형식 파싱
+    let host = 'Unknown';
+    let port = 'Unknown';
+    
+    try {
+      const url = new URL(proxyUrl);
+      host = url.hostname;
+      port = url.port;
+    } catch {
+      // URL 파싱 실패 시 간단한 파싱
+      const match = proxyUrl.match(/@?([0-9.]+):(\d+)/);
+      if (match) {
+        host = match[1];
+        port = match[2];
+      }
+    }
+
     apis.push({
       name: '프록시 서버',
-      description: 'API 요청 프록시 (IP 우회용)',
+      description: 'API 요청 프록시 (고정 IP)',
       status: 'connected',
       lastCheck: now,
       details: {
-        'Host': proxyUrl.split('@')[1]?.split(':')[0] || 'Unknown',
-        'Type': 'HTTPS',
+        'Host': host,
+        'Port': port,
+        'Type': 'HTTP Proxy',
+      },
+    });
+  } else {
+    apis.push({
+      name: '프록시 서버',
+      description: 'API 요청 프록시 (고정 IP)',
+      status: 'not_configured',
+      lastCheck: now,
+      details: {
+        'PROXY_URL': '미설정',
       },
     });
   }
