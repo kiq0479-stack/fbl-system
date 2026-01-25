@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getRocketGrowthInventory, getCoupangConfig } from '@/lib/coupang';
+import { getRocketGrowthInventory, getCoupangAccounts } from '@/lib/coupang';
 
 // 최대 페이지네이션 횟수 (무한 루프 방지)
 // 쿠팡 API는 페이지당 20개씩 반환, 상품이 많을 경우 50페이지 = 1000개까지 조회
@@ -9,29 +9,42 @@ const MAX_PAGES = 50;
 export async function POST() {
   try {
     const supabase = await createClient();
-    const config = getCoupangConfig();
+    const accounts = getCoupangAccounts();
     
-    // 1. 로켓그로스 재고 API에서 재고 가져오기 (최대 MAX_PAGES 페이지)
+    // 모든 계정에서 재고 수집
     let allInventory: any[] = [];
-    let nextToken: string | undefined;
-    let pageCount = 0;
     
-    do {
-      const response = await getRocketGrowthInventory(config, config.vendorId, {
-        nextToken,
-      });
-      allInventory = [...allInventory, ...(response.data || [])];
-      nextToken = response.nextToken || undefined;
-      pageCount++;
+    for (const account of accounts) {
+      const config = {
+        vendorId: account.vendorId,
+        accessKey: account.accessKey,
+        secretKey: account.secretKey,
+      };
       
-      // 무한 루프 방지
-      if (pageCount >= MAX_PAGES) {
-        console.log(`최대 페이지(${MAX_PAGES}) 도달, 조회 중단`);
-        break;
-      }
-    } while (nextToken);
+      let accountInventory: any[] = [];
+      let nextToken: string | undefined;
+      let pageCount = 0;
+      
+      do {
+        const response = await getRocketGrowthInventory(config, config.vendorId, {
+          nextToken,
+        });
+        accountInventory = [...accountInventory, ...(response.data || [])];
+        nextToken = response.nextToken || undefined;
+        pageCount++;
+        
+        // 무한 루프 방지
+        if (pageCount >= MAX_PAGES) {
+          console.log(`[${account.name}] 최대 페이지(${MAX_PAGES}) 도달, 조회 중단`);
+          break;
+        }
+      } while (nextToken);
+      
+      console.log(`[${account.name}] 로켓그로스 재고 조회: ${accountInventory.length}개 (${pageCount}페이지)`);
+      allInventory = [...allInventory, ...accountInventory];
+    }
 
-    console.log(`쿠팡 로켓그로스 재고 조회: ${allInventory.length}개 (${pageCount}페이지)`);
+    console.log(`전체 계정 합계 - 로켓그로스 재고 조회: ${allInventory.length}개`);
 
     // 2. vendorItemId(SKU)로 재고 매핑
     const inventoryMap = new Map<string, number>();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRevenueHistory, getCoupangConfig } from '@/lib/coupang';
+import { getRevenueHistory, getCoupangAccounts } from '@/lib/coupang';
 import { createClient } from '@supabase/supabase-js';
 
 // Service Role Key가 없으면 Anon Key 사용 (RLS 정책 필요)
@@ -16,7 +16,7 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const config = getCoupangConfig();
+    const accounts = getCoupangAccounts();
     const body = await request.json();
     const { from, to } = body;
     
@@ -27,14 +27,37 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 매출내역 조회
-    const response = await getRevenueHistory(config, {
-      vendorId: config.vendorId,
-      recognitionDateFrom: from,
-      recognitionDateTo: to,
-    });
+    // 모든 계정에서 매출내역 조회
+    let allRevenues: { data: any; vendorId: string; accountName: string }[] = [];
+    for (const account of accounts) {
+      const config = {
+        vendorId: account.vendorId,
+        accessKey: account.accessKey,
+        secretKey: account.secretKey,
+      };
+      
+      try {
+        const response = await getRevenueHistory(config, {
+          vendorId: config.vendorId,
+          recognitionDateFrom: from,
+          recognitionDateTo: to,
+        });
+        
+        if (response.data && response.data.length > 0) {
+          response.data.forEach(rev => {
+            allRevenues.push({
+              data: rev,
+              vendorId: config.vendorId,
+              accountName: account.name,
+            });
+          });
+        }
+      } catch (err) {
+        console.error(`[${account.name}] 매출내역 조회 실패:`, err);
+      }
+    }
 
-    if (!response.data || response.data.length === 0) {
+    if (allRevenues.length === 0) {
       return NextResponse.json({
         success: true,
         message: '동기화할 매출내역이 없습니다.',
@@ -46,14 +69,14 @@ export async function POST(request: NextRequest) {
     let synced = 0;
     const errors: string[] = [];
 
-    for (const revenue of response.data) {
+    for (const { data: revenue, vendorId } of allRevenues) {
       try {
         // 매출내역 저장 (coupang_revenues 테이블 필요)
         const { error } = await supabase
           .from('coupang_revenues')
           .upsert({
             order_id: String(revenue.orderId),
-            vendor_id: config.vendorId,
+            vendor_id: vendorId,
             vendor_item_id: revenue.vendorItemId,
             vendor_item_name: revenue.vendorItemName,
             quantity: revenue.quantity,
@@ -86,7 +109,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: `${synced}건의 매출내역이 동기화되었습니다.${errors.length > 0 ? ` (${errors.length}건 오류)` : ''}`,
       synced,
-      total: response.data.length,
+      total: allRevenues.length,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {

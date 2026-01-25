@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOrders, getCoupangConfig } from '@/lib/coupang';
+import { getOrders, getCoupangAccounts } from '@/lib/coupang';
 import { createClient } from '@supabase/supabase-js';
 
 // Service Role Key가 없으면 Anon Key 사용
@@ -27,18 +27,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const config = getCoupangConfig();
+    const accounts = getCoupangAccounts();
 
-    // 쿠팡 주문 조회
-    const coupangResponse = await getOrders(config, {
-      vendorId: config.vendorId,
-      createdAtFrom: from,
-      createdAtTo: to,
-      status,
-      maxPerPage: 50,
-    });
-
-    const orders = coupangResponse.data || [];
+    // 모든 계정에서 주문 조회
+    let orders: any[] = [];
+    for (const account of accounts) {
+      const config = {
+        vendorId: account.vendorId,
+        accessKey: account.accessKey,
+        secretKey: account.secretKey,
+      };
+      
+      try {
+        const coupangResponse = await getOrders(config, {
+          vendorId: config.vendorId,
+          createdAtFrom: from,
+          createdAtTo: to,
+          status,
+          maxPerPage: 50,
+        });
+        
+        // 계정명 추가
+        const ordersWithAccount = (coupangResponse.data || []).map(order => ({
+          ...order,
+          _accountName: account.name,
+        }));
+        
+        orders = [...orders, ...ordersWithAccount];
+      } catch (err) {
+        console.error(`[${account.name}] 주문 조회 실패:`, err);
+      }
+    }
     
     if (orders.length === 0) {
       return NextResponse.json({
@@ -106,7 +125,7 @@ export async function POST(request: NextRequest) {
 
         // 주문 아이템 삽입
         if (order.orderItems && order.orderItems.length > 0) {
-          const itemsToInsert = order.orderItems.map(item => ({
+          const itemsToInsert = order.orderItems.map((item: any) => ({
             coupang_order_id: newOrder.id,
             vendor_item_id: item.vendorItemId,
             vendor_item_name: item.vendorItemName,

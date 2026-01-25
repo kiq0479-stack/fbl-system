@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRocketGrowthOrders, getCoupangConfig } from '@/lib/coupang';
+import { getRocketGrowthOrders, getCoupangAccounts } from '@/lib/coupang';
 import { createClient } from '@supabase/supabase-js';
 
 // Service Role Key가 없으면 Anon Key 사용
@@ -33,16 +33,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const config = getCoupangConfig();
+    const accounts = getCoupangAccounts();
 
-    // 로켓그로스 주문 조회 (결제일 기준, paidDateFrom/paidDateTo)
-    const response = await getRocketGrowthOrders(config, {
-      vendorId: config.vendorId,
-      paidDateFrom: formatDateToYYYYMMDD(from),
-      paidDateTo: formatDateToYYYYMMDD(to),
-    });
-
-    const orders = response.data || [];
+    // 모든 계정에서 로켓그로스 주문 조회
+    let orders: any[] = [];
+    for (const account of accounts) {
+      const config = {
+        vendorId: account.vendorId,
+        accessKey: account.accessKey,
+        secretKey: account.secretKey,
+      };
+      
+      try {
+        const response = await getRocketGrowthOrders(config, {
+          vendorId: config.vendorId,
+          paidDateFrom: formatDateToYYYYMMDD(from),
+          paidDateTo: formatDateToYYYYMMDD(to),
+        });
+        
+        // 계정명 추가
+        const ordersWithAccount = (response.data || []).map(order => ({
+          ...order,
+          _accountName: account.name,
+        }));
+        
+        orders = [...orders, ...ordersWithAccount];
+      } catch (err) {
+        console.error(`[${account.name}] 로켓그로스 주문 조회 실패:`, err);
+      }
+    }
     
     if (orders.length === 0) {
       return NextResponse.json({
@@ -99,7 +118,7 @@ export async function POST(request: NextRequest) {
 
         // 주문 아이템 삽입
         if (order.orderItems && order.orderItems.length > 0) {
-          const itemsToInsert = order.orderItems.map(item => ({
+          const itemsToInsert = order.orderItems.map((item: any) => ({
             rocket_growth_order_id: newOrder.id,
             vendor_item_id: item.vendorItemId,
             product_name: item.productName,
