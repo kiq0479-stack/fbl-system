@@ -3,8 +3,9 @@ import { getRocketGrowthInventory, getRocketGrowthOrders, getCoupangConfig } fro
 import { createClient } from '@/lib/supabase/server';
 
 // 최대 페이지 수 제한 (무한 루프 방지)
-const MAX_INVENTORY_PAGES = 5;
-const MAX_ORDER_PAGES = 3;
+// 쿠팡 API는 페이지당 20개씩 반환, 상품이 많을 경우 50페이지 = 1000개까지 조회
+const MAX_INVENTORY_PAGES = 50;
+const MAX_ORDER_PAGES = 10;
 
 // 날짜 계산 헬퍼
 function getDateString(daysAgo: number): string {

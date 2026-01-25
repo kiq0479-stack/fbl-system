@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getRocketGrowthInventory, getCoupangConfig } from '@/lib/coupang';
 
 // 최대 페이지네이션 횟수 (무한 루프 방지)
-const MAX_PAGES = 10;
+// 쿠팡 API는 페이지당 20개씩 반환, 상품이 많을 경우 50페이지 = 1000개까지 조회
+const MAX_PAGES = 50;
 
 export async function POST() {
   try {

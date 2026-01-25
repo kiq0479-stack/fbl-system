@@ -12,8 +12,11 @@ export async function POST(request: Request) {
     const sortOrder = searchParams.get('sort') || 'asc'; // 'asc' or 'desc'
     
     // 1. 로켓그로스 재고 API에서 재고 > 0인 vendorItemId 목록 가져오기
+    // 최대 50페이지 = 1000개까지 조회 (무한 루프 방지)
+    const MAX_INVENTORY_PAGES = 50;
     let allInventory: any[] = [];
     let nextToken: string | undefined;
+    let pageCount = 0;
     
     do {
       const response = await getRocketGrowthInventory(config, config.vendorId, {
@@ -21,6 +24,11 @@ export async function POST(request: Request) {
       });
       allInventory = [...allInventory, ...(response.data || [])];
       nextToken = response.nextToken || undefined;
+      pageCount++;
+      if (pageCount >= MAX_INVENTORY_PAGES) {
+        console.log(`재고 API 최대 페이지(${MAX_INVENTORY_PAGES}) 도달`);
+        break;
+      }
     } while (nextToken);
 
     // 재고 있는 vendorItemId Set 생성 + externalSkuId 맵
