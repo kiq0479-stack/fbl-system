@@ -543,7 +543,75 @@ export interface SellerProductDetail {
   items: SellerProductItem[];
 }
 
-// Config helper
+// ========================================
+// 멀티 계정 지원
+// ========================================
+
+export interface CoupangAccount {
+  id: string;
+  name: string;
+  vendorId: string;
+  accessKey: string;
+  secretKey: string;
+}
+
+// 등록된 모든 쿠팡 계정 목록 가져오기
+export function getCoupangAccounts(): CoupangAccount[] {
+  const accounts: CoupangAccount[] = [];
+  
+  // 계정 1 (기본)
+  const vendorId1 = process.env.COUPANG_VENDOR_ID;
+  const accessKey1 = process.env.COUPANG_ACCESS_KEY;
+  const secretKey1 = process.env.COUPANG_SECRET_KEY;
+  
+  if (vendorId1 && accessKey1 && secretKey1) {
+    accounts.push({
+      id: '1',
+      name: 'FBL',
+      vendorId: vendorId1,
+      accessKey: accessKey1,
+      secretKey: secretKey1,
+    });
+  }
+  
+  // 계정 2 (쉴트)
+  const vendorId2 = process.env.COUPANG_VENDOR_ID_2;
+  const accessKey2 = process.env.COUPANG_ACCESS_KEY_2;
+  const secretKey2 = process.env.COUPANG_SECRET_KEY_2;
+  
+  if (vendorId2 && accessKey2 && secretKey2) {
+    accounts.push({
+      id: '2',
+      name: '쉴트',
+      vendorId: vendorId2,
+      accessKey: accessKey2,
+      secretKey: secretKey2,
+    });
+  }
+  
+  // 추가 계정들 (필요시 확장)
+  // 계정 3, 4, 5...
+  
+  return accounts;
+}
+
+// 특정 계정 ID로 config 가져오기
+export function getCoupangConfigById(accountId: string): CoupangConfig {
+  const accounts = getCoupangAccounts();
+  const account = accounts.find(a => a.id === accountId);
+  
+  if (!account) {
+    throw new Error(`Coupang account not found: ${accountId}`);
+  }
+  
+  return {
+    vendorId: account.vendorId,
+    accessKey: account.accessKey,
+    secretKey: account.secretKey,
+  };
+}
+
+// 기본 config (계정 1)
 export function getCoupangConfig(): CoupangConfig {
   const vendorId = process.env.COUPANG_VENDOR_ID;
   const accessKey = process.env.COUPANG_ACCESS_KEY;

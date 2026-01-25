@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRocketGrowthInventory, getRocketGrowthOrders, getCoupangConfig } from '@/lib/coupang';
+import { getRocketGrowthInventory, getRocketGrowthOrders, getCoupangAccounts, CoupangAccount } from '@/lib/coupang';
 import { createClient } from '@/lib/supabase/server';
 
 // 최대 페이지 수 제한 (무한 루프 방지)
-// 쿠팡 API는 페이지당 20개씩 반환, 상품이 많을 경우 50페이지 = 1000개까지 조회
 const MAX_INVENTORY_PAGES = 50;
 const MAX_ORDER_PAGES = 10;
 
@@ -18,62 +17,94 @@ function formatDateToYYYYMMDD(dateStr: string): string {
   return dateStr.replace(/-/g, '');
 }
 
-export async function GET(request: NextRequest) {
+// 단일 계정의 재고/주문 데이터 가져오기
+async function fetchAccountData(account: CoupangAccount, paidDateFrom: string, paidDateTo: string) {
+  const config = {
+    vendorId: account.vendorId,
+    accessKey: account.accessKey,
+    secretKey: account.secretKey,
+  };
+
+  // 재고 데이터
+  let inventory: any[] = [];
+  let nextToken: string | undefined;
+  let pages = 0;
+  
   try {
-    const config = getCoupangConfig();
-    
-    // 1. 재고 데이터 가져오기 (최대 MAX_INVENTORY_PAGES 페이지)
-    let allInventory: any[] = [];
-    let nextToken: string | undefined;
-    let inventoryPages = 0;
-    
     do {
-      const inventoryResponse = await getRocketGrowthInventory(config, config.vendorId, {
-        nextToken,
-      });
-      allInventory = [...allInventory, ...(inventoryResponse.data || [])];
-      nextToken = inventoryResponse.nextToken;
-      inventoryPages++;
-      
-      if (inventoryPages >= MAX_INVENTORY_PAGES) {
-        console.log(`재고 API 최대 페이지(${MAX_INVENTORY_PAGES}) 도달`);
-        break;
-      }
+      const response = await getRocketGrowthInventory(config, config.vendorId, { nextToken });
+      inventory = [...inventory, ...(response.data || [])];
+      nextToken = response.nextToken;
+      pages++;
+      if (pages >= MAX_INVENTORY_PAGES) break;
     } while (nextToken);
+    console.log(`[${account.name}] 재고: ${inventory.length}개`);
+  } catch (err) {
+    console.error(`[${account.name}] 재고 조회 실패:`, err);
+  }
 
-    console.log(`재고 조회 완료: ${allInventory.length}개 (${inventoryPages}페이지)`);
-
-    // 2. 7일간 주문 데이터 가져오기 (최대 MAX_ORDER_PAGES 페이지)
-    const today = getDateString(0);
-    const sevenDaysAgo = getDateString(7);
-    
-    const paidDateFrom = formatDateToYYYYMMDD(sevenDaysAgo);
-    const paidDateTo = formatDateToYYYYMMDD(today);
-    
-    let allOrders: any[] = [];
-    let orderNextToken: string | undefined;
-    let orderPages = 0;
-    
+  // 주문 데이터
+  let orders: any[] = [];
+  let orderToken: string | undefined;
+  let orderPages = 0;
+  
+  try {
     do {
-      const ordersResponse = await getRocketGrowthOrders(config, {
+      const response = await getRocketGrowthOrders(config, {
         vendorId: config.vendorId,
         paidDateFrom,
         paidDateTo,
-        nextToken: orderNextToken,
+        nextToken: orderToken,
       });
-      allOrders = [...allOrders, ...(ordersResponse.data || [])];
-      orderNextToken = ordersResponse.nextToken;
+      orders = [...orders, ...(response.data || [])];
+      orderToken = response.nextToken;
       orderPages++;
-      
-      if (orderPages >= MAX_ORDER_PAGES) {
-        console.log(`주문 API 최대 페이지(${MAX_ORDER_PAGES}) 도달`);
-        break;
-      }
-    } while (orderNextToken);
+      if (orderPages >= MAX_ORDER_PAGES) break;
+    } while (orderToken);
+    console.log(`[${account.name}] 주문: ${orders.length}개`);
+  } catch (err) {
+    console.error(`[${account.name}] 주문 조회 실패:`, err);
+  }
 
-    console.log(`주문 조회 완료: ${allOrders.length}개 (${orderPages}페이지)`);
+  return { inventory, orders, accountName: account.name };
+}
 
-    // 3. 주문에서 상품명 매핑 + 7일 판매량 계산
+export async function GET(request: NextRequest) {
+  try {
+    const accounts = getCoupangAccounts();
+    
+    if (accounts.length === 0) {
+      return NextResponse.json({ error: 'No Coupang accounts configured' }, { status: 500 });
+    }
+
+    const today = getDateString(0);
+    const sevenDaysAgo = getDateString(7);
+    const paidDateFrom = formatDateToYYYYMMDD(sevenDaysAgo);
+    const paidDateTo = formatDateToYYYYMMDD(today);
+
+    // 모든 계정에서 병렬로 데이터 가져오기
+    const results = await Promise.all(
+      accounts.map(account => fetchAccountData(account, paidDateFrom, paidDateTo))
+    );
+
+    // 모든 계정 데이터 병합
+    let allInventory: any[] = [];
+    let allOrders: any[] = [];
+    const accountNames: string[] = [];
+
+    results.forEach(result => {
+      // 재고에 계정명 추가
+      result.inventory.forEach(item => {
+        item._accountName = result.accountName;
+      });
+      allInventory = [...allInventory, ...result.inventory];
+      allOrders = [...allOrders, ...result.orders];
+      accountNames.push(result.accountName);
+    });
+
+    console.log(`전체 재고: ${allInventory.length}개, 전체 주문: ${allOrders.length}개 (계정: ${accountNames.join(', ')})`);
+
+    // 주문에서 상품명 매핑 + 7일 판매량 계산
     const nameMap: Record<number, string> = {};
     const sales7d: Record<number, number> = {};
     
@@ -85,8 +116,7 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // 3.5 입고예정 데이터 가져오기 (in_transit 상태만 - 실제 이동중인 것)
-    // pending은 아직 출발 전이라 입고예정에 포함 안 함
+    // 입고예정 데이터 가져오기
     const incomingStock: Record<string, number> = {};
     try {
       const supabase = await createClient();
@@ -102,17 +132,15 @@ export async function GET(request: NextRequest) {
       if (inboundItems) {
         inboundItems.forEach((item: any) => {
           if (item.sku) {
-            // SKU를 키로 사용 (SKU = vendorItemId)
             incomingStock[item.sku] = (incomingStock[item.sku] || 0) + item.quantity;
           }
         });
       }
     } catch (err) {
-      // 테이블이 없으면 무시 (아직 마이그레이션 전)
       console.log('Inbound table not available yet');
     }
 
-    // 4. 재고 데이터와 합치기
+    // 재고 데이터와 합치기
     const stockSummary = allInventory.map(item => {
       const vendorItemId = item.vendorItemId;
       const totalQty = item.inventoryDetails?.totalOrderableQuantity || 0;
@@ -121,22 +149,21 @@ export async function GET(request: NextRequest) {
       return {
         vendorItemId,
         productName: nameMap[vendorItemId] || `Unknown (${vendorItemId})`,
-        totalStock: totalQty,           // 쿠팡물류 총합 (판매가능재고)
-        availableStock: totalQty,       // 판매가능재고
-        incomingStock: incomingStock[String(vendorItemId)] || 0, // 입고예정재고 (우리 DB - SKU로 매칭)
+        totalStock: totalQty,
+        availableStock: totalQty,
+        incomingStock: incomingStock[String(vendorItemId)] || 0,
         sales7d: sales7d[vendorItemId] || 0,
         sales30d,
         externalSkuId: item.externalSkuId || null,
+        accountName: item._accountName, // 어느 계정 상품인지 표시
       };
     });
 
-    // 5. 판매량 있는 상품 우선, 30일 판매량 순으로 정렬
+    // 정렬: 이름 있는 것 우선, 30일 판매량 순
     stockSummary.sort((a, b) => {
-      // 이름 있는 것 우선
       const aHasName = !a.productName.startsWith('Unknown');
       const bHasName = !b.productName.startsWith('Unknown');
       if (aHasName !== bHasName) return bHasName ? 1 : -1;
-      // 30일 판매량 순
       return b.sales30d - a.sales30d;
     });
 
@@ -144,6 +171,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: stockSummary,
       total: stockSummary.length,
+      accounts: accountNames,
       updatedAt: new Date().toISOString(),
       period: {
         sales7d: { from: sevenDaysAgo, to: today },

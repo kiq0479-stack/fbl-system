@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCancelRequests, getCoupangConfig } from '@/lib/coupang';
+import { getCancelRequests, getCoupangAccounts } from '@/lib/coupang';
 
 export async function GET(request: NextRequest) {
   try {
-    const config = getCoupangConfig();
+    const accounts = getCoupangAccounts();
     const searchParams = request.nextUrl.searchParams;
     
     const from = searchParams.get('from');
@@ -19,22 +19,54 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // 날짜 형식 변환 - YYYY-MM-DD -> YYYY-MM-DDTHH:mm
+    // 날짜 형식 변환
     const createdAtFrom = from.includes('T') ? from : `${from}T00:00`;
     const createdAtTo = to.includes('T') ? to : `${to}T23:59`;
     
-    // 취소 요청 목록 조회
-    // cancelType=CANCEL일 때는 status 파라미터 사용 불가
-    const response = await getCancelRequests(config, {
-      vendorId: config.vendorId,
-      createdAtFrom,
-      createdAtTo,
-      cancelType: cancelType || undefined,
-      status: status || undefined,
-      searchType: searchType || undefined,
-    });
+    // 모든 계정에서 취소 요청 가져오기
+    const allAccountData = await Promise.all(
+      accounts.map(async (account) => {
+        const config = {
+          vendorId: account.vendorId,
+          accessKey: account.accessKey,
+          secretKey: account.secretKey,
+        };
 
-    return NextResponse.json(response);
+        try {
+          const response = await getCancelRequests(config, {
+            vendorId: config.vendorId,
+            createdAtFrom,
+            createdAtTo,
+            cancelType: cancelType || undefined,
+            status: status || undefined,
+            searchType: searchType || undefined,
+          });
+
+          // 각 항목에 계정명 추가
+          return (response.data || []).map(item => ({
+            ...item,
+            _accountName: account.name,
+          }));
+        } catch (err) {
+          console.error(`[${account.name}] 취소 요청 조회 실패:`, err);
+          return [];
+        }
+      })
+    );
+
+    // 모든 데이터 병합
+    const mergedData = allAccountData.flat();
+
+    // 생성일 기준 최신순 정렬
+    mergedData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return NextResponse.json({
+      code: 'SUCCESS',
+      message: 'OK',
+      data: mergedData,
+      total: mergedData.length,
+      accounts: accounts.map(a => a.name),
+    });
   } catch (error) {
     console.error('Cancel Requests API Error:', error);
     return NextResponse.json(

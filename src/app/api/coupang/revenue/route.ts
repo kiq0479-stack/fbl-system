@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRevenueHistory, getCoupangConfig } from '@/lib/coupang';
+import { getRevenueHistory, getCoupangAccounts } from '@/lib/coupang';
 
 export async function GET(request: NextRequest) {
   try {
-    const config = getCoupangConfig();
+    const accounts = getCoupangAccounts();
     const searchParams = request.nextUrl.searchParams;
     
     const from = searchParams.get('from');
@@ -16,34 +16,54 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // 매출내역 조회 API (매출인식일 기준)
-    const response = await getRevenueHistory(config, {
-      vendorId: config.vendorId,
-      recognitionDateFrom: from,
-      recognitionDateTo: to,
-    });
+    // 모든 계정에서 매출내역 가져오기
+    const allAccountData = await Promise.all(
+      accounts.map(async (account) => {
+        const config = {
+          vendorId: account.vendorId,
+          accessKey: account.accessKey,
+          secretKey: account.secretKey,
+        };
 
-    // 페이징 처리 - nextToken이 있으면 모든 데이터 가져오기
-    let allData = response.data || [];
-    let nextToken = response.nextToken;
-    
-    while (nextToken) {
-      const nextResponse = await getRevenueHistory(config, {
-        vendorId: config.vendorId,
-        recognitionDateFrom: from,
-        recognitionDateTo: to,
-        nextToken,
-      });
-      
-      allData = [...allData, ...(nextResponse.data || [])];
-      nextToken = nextResponse.nextToken;
-    }
+        try {
+          let allData: any[] = [];
+          let nextToken: string | undefined;
+
+          do {
+            const response = await getRevenueHistory(config, {
+              vendorId: config.vendorId,
+              recognitionDateFrom: from,
+              recognitionDateTo: to,
+              nextToken,
+            });
+            allData = [...allData, ...(response.data || [])];
+            nextToken = response.nextToken;
+          } while (nextToken);
+
+          // 각 항목에 계정명 추가
+          return allData.map(item => ({
+            ...item,
+            _accountName: account.name,
+          }));
+        } catch (err) {
+          console.error(`[${account.name}] 매출내역 조회 실패:`, err);
+          return [];
+        }
+      })
+    );
+
+    // 모든 데이터 병합
+    const mergedData = allAccountData.flat();
+
+    // 매출인식일 기준 최신순 정렬
+    mergedData.sort((a, b) => new Date(b.recognizedAt).getTime() - new Date(a.recognizedAt).getTime());
 
     return NextResponse.json({
-      code: response.code,
-      message: response.message,
-      data: allData,
-      total: allData.length,
+      code: 0,
+      message: 'OK',
+      data: mergedData,
+      total: mergedData.length,
+      accounts: accounts.map(a => a.name),
     });
   } catch (error) {
     console.error('Revenue History API Error:', error);
