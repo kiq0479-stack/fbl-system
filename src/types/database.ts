@@ -15,6 +15,7 @@ export type InventoryChangeType = 'in' | 'out' | 'adjust' | 'transfer'
 export type OrderStatus = 'requested' | 'pre_registered' | 'shipping' | 'commercial_confirmed' | 'arrived'
 export type SalesChannel = 'coupang' | 'naver'
 export type UserRole = 'admin' | 'manager' | 'staff'
+export type SystemUserRole = 'admin' | 'manager' | 'logistics' | 'marketing' | 'finance' | 'analytics'
 export type SyncStatus = 'success' | 'failed'
 export type SupplierType = 'YOUBEICHEN' | 'QUYATIMEBABY' | 'OTHER'
 export type CoupangOrderStatus = 'ACCEPT' | 'INSTRUCT' | 'DEPARTURE' | 'DELIVERING' | 'FINAL_DELIVERY'
@@ -609,6 +610,35 @@ export interface Database {
           sales_price?: number
           currency?: string | null
           created_at?: string
+        }
+      }
+      system_users: {
+        Row: {
+          id: string
+          username: string
+          password: string
+          role: SystemUserRole
+          name: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          username: string
+          password: string
+          role: SystemUserRole
+          name: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          username?: string
+          password?: string
+          role?: SystemUserRole
+          name?: string
+          created_at?: string
+          updated_at?: string
         }
       }
       coupang_revenues: {

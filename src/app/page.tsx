@@ -1,6 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { ROLE_PERMISSIONS, UserRole } from '@/types/auth';
 
 const modules = [
   {
@@ -54,13 +57,58 @@ const modules = [
 ];
 
 export default function PortalPage() {
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
+  // 사용자 역할에 따른 접근 가능 모듈 확인
+  const canAccess = (moduleId: string): boolean => {
+    if (!user) return false;
+    const permissions = ROLE_PERMISSIONS[user.role as UserRole];
+    return permissions?.includes(moduleId) ?? false;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-gray-400">로딩 중...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="pt-20 pb-12 px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl font-bold text-gray-900 tracking-tight">FBL 통합 업무 시스템</h1>
-          <p className="text-gray-500 mt-3 text-lg">업무 영역을 선택하세요</p>
+      <header className="pt-12 pb-8 px-8">
+        <div className="max-w-4xl mx-auto">
+          {/* User Info Bar */}
+          <div className="flex items-center justify-between mb-12">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium">
+                {user?.name?.charAt(0) || '?'}
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">{user?.name || '사용자'}</p>
+                <p className="text-sm text-gray-500">{user?.username}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              로그아웃
+            </button>
+          </div>
+
+          {/* Title */}
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">FBL 통합 업무 시스템</h1>
+            <p className="text-gray-500 mt-3 text-lg">업무 영역을 선택하세요</p>
+          </div>
         </div>
       </header>
 
@@ -68,8 +116,11 @@ export default function PortalPage() {
       <main className="flex-1 px-8 pb-20">
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {modules.map((module) => (
-              module.available ? (
+            {modules.map((module) => {
+              const hasAccess = canAccess(module.id);
+              const isAvailable = module.available && hasAccess;
+              
+              return isAvailable ? (
                 <Link
                   key={module.id}
                   href={module.href}
@@ -97,11 +148,11 @@ export default function PortalPage() {
                   <h2 className="text-xl font-semibold text-gray-400 mb-2">{module.name}</h2>
                   <p className="text-gray-400 text-sm">{module.description}</p>
                   <span className="absolute top-6 right-6 text-xs px-3 py-1 bg-gray-200 text-gray-500 rounded-full font-medium">
-                    준비중
+                    {!module.available ? '준비중' : '권한 없음'}
                   </span>
                 </div>
-              )
-            ))}
+              );
+            })}
           </div>
         </div>
       </main>
