@@ -16,10 +16,10 @@ export interface AuthContextType {
 
 // 역할별 접근 가능한 모듈
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ['logistics', 'marketing', 'finance', 'analytics'],
-  manager: ['logistics', 'marketing', 'finance', 'analytics'],
-  logistics: ['logistics'],
-  marketing: ['marketing'],
-  finance: ['finance'],
-  analytics: ['analytics'],
+  admin: ['logistics', 'marketing', 'finance', 'analytics'],  // 전체
+  manager: ['logistics', 'marketing'],                         // 물류 + 마케팅
+  logistics: ['logistics'],                                    // 물류만
+  marketing: ['marketing'],                                    // 마케팅만
+  finance: ['finance'],                                        // 회계만
+  analytics: ['analytics'],                                    // 분석만
 };
