@@ -29,6 +29,27 @@ interface ApiStatus {
   details?: Record<string, string>;
 }
 
+interface Warehouse {
+  id: string;
+  name: string;
+  address: string;
+  type: 'main' | 'coupang' | 'other';
+}
+
+interface EditWarehouseForm {
+  id: string;
+  name: string;
+  address: string;
+  type: 'main' | 'coupang' | 'other';
+}
+
+const DEFAULT_WAREHOUSES: Warehouse[] = [
+  { id: '1', name: '본사 창고', address: '서울시 강남구', type: 'main' },
+  { id: '2', name: '쿠팡 물류센터', address: '쿠팡 로켓그로스', type: 'coupang' },
+];
+
+const WAREHOUSE_STORAGE_KEY = 'fbl-warehouses';
+
 export default function SettingsPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('users');
@@ -56,10 +77,31 @@ export default function SettingsPage() {
   });
 
   // 창고 정보 상태
-  const [warehouses, setWarehouses] = useState([
-    { id: '1', name: '본사 창고', address: '서울시 강남구', type: 'main' },
-    { id: '2', name: '쿠팡 물류센터', address: '쿠팡 로켓그로스', type: 'coupang' },
-  ]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [showAddWarehouse, setShowAddWarehouse] = useState(false);
+  const [newWarehouse, setNewWarehouse] = useState<Omit<Warehouse, 'id'>>({ name: '', address: '', type: 'other' });
+  const [editingWarehouse, setEditingWarehouse] = useState<EditWarehouseForm | null>(null);
+
+  // 창고 정보 localStorage에서 로드
+  useEffect(() => {
+    const stored = localStorage.getItem(WAREHOUSE_STORAGE_KEY);
+    if (stored) {
+      try {
+        setWarehouses(JSON.parse(stored));
+      } catch {
+        setWarehouses(DEFAULT_WAREHOUSES);
+      }
+    } else {
+      setWarehouses(DEFAULT_WAREHOUSES);
+      localStorage.setItem(WAREHOUSE_STORAGE_KEY, JSON.stringify(DEFAULT_WAREHOUSES));
+    }
+  }, []);
+
+  // 창고 정보 저장
+  const saveWarehouses = (updated: Warehouse[]) => {
+    setWarehouses(updated);
+    localStorage.setItem(WAREHOUSE_STORAGE_KEY, JSON.stringify(updated));
+  };
 
   // 사용자 목록 로드
   useEffect(() => {
@@ -194,6 +236,56 @@ export default function SettingsPage() {
     } catch (error) {
       alert('네트워크 오류');
     }
+  };
+
+  // 창고 추가
+  const handleAddWarehouse = () => {
+    if (!newWarehouse.name || !newWarehouse.address) {
+      alert('창고명과 주소를 입력해주세요.');
+      return;
+    }
+
+    const newId = Date.now().toString();
+    const updated = [...warehouses, { id: newId, ...newWarehouse }];
+    saveWarehouses(updated);
+    setShowAddWarehouse(false);
+    setNewWarehouse({ name: '', address: '', type: 'other' });
+  };
+
+  // 창고 수정
+  const handleEditWarehouse = (warehouse: Warehouse) => {
+    setEditingWarehouse({
+      id: warehouse.id,
+      name: warehouse.name,
+      address: warehouse.address,
+      type: warehouse.type,
+    });
+  };
+
+  const handleUpdateWarehouse = () => {
+    if (!editingWarehouse) return;
+
+    if (!editingWarehouse.name || !editingWarehouse.address) {
+      alert('창고명과 주소를 입력해주세요.');
+      return;
+    }
+
+    const updated = warehouses.map(w => 
+      w.id === editingWarehouse.id 
+        ? { ...editingWarehouse }
+        : w
+    );
+    saveWarehouses(updated);
+    setEditingWarehouse(null);
+    alert('창고 정보가 수정되었습니다.');
+  };
+
+  // 창고 삭제
+  const handleDeleteWarehouse = (warehouseId: string) => {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+    
+    const updated = warehouses.filter(w => w.id !== warehouseId);
+    saveWarehouses(updated);
   };
 
   const tabs = [
@@ -590,10 +682,116 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">창고 정보</h2>
-            <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            <button 
+              onClick={() => setShowAddWarehouse(true)}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
               + 창고 추가
             </button>
           </div>
+
+          {/* 창고 추가 폼 */}
+          {showAddWarehouse && (
+            <div className="bg-slate-50 rounded-lg p-4 space-y-4">
+              <h3 className="font-medium">새 창고 추가</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input
+                  type="text"
+                  placeholder="창고명"
+                  value={newWarehouse.name}
+                  onChange={(e) => setNewWarehouse({ ...newWarehouse, name: e.target.value })}
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                />
+                <input
+                  type="text"
+                  placeholder="주소"
+                  value={newWarehouse.address}
+                  onChange={(e) => setNewWarehouse({ ...newWarehouse, address: e.target.value })}
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                />
+                <select
+                  value={newWarehouse.type}
+                  onChange={(e) => setNewWarehouse({ ...newWarehouse, type: e.target.value as Warehouse['type'] })}
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                >
+                  <option value="main">본사</option>
+                  <option value="coupang">쿠팡</option>
+                  <option value="other">기타</option>
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAddWarehouse}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                >
+                  추가
+                </button>
+                <button
+                  onClick={() => setShowAddWarehouse(false)}
+                  className="px-4 py-2 bg-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-300"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 창고 수정 모달 */}
+          {editingWarehouse && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 space-y-4">
+                <h3 className="text-lg font-semibold">창고 수정</h3>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">창고명</label>
+                    <input
+                      type="text"
+                      value={editingWarehouse.name}
+                      onChange={(e) => setEditingWarehouse({ ...editingWarehouse, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">주소</label>
+                    <input
+                      type="text"
+                      value={editingWarehouse.address}
+                      onChange={(e) => setEditingWarehouse({ ...editingWarehouse, address: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">유형</label>
+                    <select
+                      value={editingWarehouse.type}
+                      onChange={(e) => setEditingWarehouse({ ...editingWarehouse, type: e.target.value as Warehouse['type'] })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="main">본사</option>
+                      <option value="coupang">쿠팡</option>
+                      <option value="other">기타</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={handleUpdateWarehouse}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={() => setEditingWarehouse(null)}
+                    className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-300 transition-colors"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2">
             {warehouses.map((warehouse) => (
@@ -604,16 +802,32 @@ export default function SettingsPage() {
                     <p className="text-sm text-slate-500 mt-1">{warehouse.address}</p>
                   </div>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    warehouse.type === 'main' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                    warehouse.type === 'main' ? 'bg-blue-100 text-blue-700' : 
+                    warehouse.type === 'coupang' ? 'bg-purple-100 text-purple-700' :
+                    'bg-slate-100 text-slate-700'
                   }`}>
-                    {warehouse.type === 'main' ? '본사' : '쿠팡'}
+                    {warehouse.type === 'main' ? '본사' : warehouse.type === 'coupang' ? '쿠팡' : '기타'}
                   </span>
+                </div>
+                <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => handleEditWarehouse(warehouse)}
+                    className="text-blue-600 hover:text-blue-800 text-sm"
+                  >
+                    수정
+                  </button>
+                  <button
+                    onClick={() => handleDeleteWarehouse(warehouse.id)}
+                    className="text-red-600 hover:text-red-800 text-sm"
+                  >
+                    삭제
+                  </button>
                 </div>
               </div>
             ))}
           </div>
 
-          <p className="text-xs text-slate-400">* 창고 추가/수정 기능은 추후 업데이트 예정입니다.</p>
+          <p className="text-xs text-slate-400">* 창고 정보는 브라우저 로컬 저장소에 저장됩니다.</p>
         </div>
       )}
     </div>
