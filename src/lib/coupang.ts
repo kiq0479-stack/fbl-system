@@ -567,7 +567,7 @@ export function getCoupangAccounts(): CoupangAccount[] {
   if (vendorId1 && accessKey1 && secretKey1) {
     accounts.push({
       id: '1',
-      name: 'FBL',
+      name: '컴팩트우디',
       vendorId: vendorId1,
       accessKey: accessKey1,
       secretKey: secretKey1,
