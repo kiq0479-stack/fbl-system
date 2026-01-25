@@ -73,8 +73,9 @@ export async function POST() {
     const toUpdate: { id: string; quantity: number }[] = [];
 
     for (const product of (products as { id: string; sku: string; external_sku: string | null; name: string }[])) {
-      // external_sku(쿠팡 vendorItemId) 또는 sku로 매칭 시도
-      const coupangQty = inventoryMap.get(product.external_sku || '') || inventoryMap.get(product.sku) || 0;
+      // sku가 쿠팡 vendorItemId이므로 sku로 먼저 매칭
+      // (external_sku는 쿠팡의 externalSkuId로 다른 값임)
+      const coupangQty = inventoryMap.get(product.sku) || 0;
       const existing = existingMap.get(product.id);
 
       if (existing) {
