@@ -80,16 +80,21 @@ export async function GET() {
       const config = getCoupangConfig();
       const response = await getRocketGrowthInventory(config, vendorId, {});
 
+      // 쿠팡 API는 code가 숫자 0 또는 문자열 "SUCCESS"일 수 있음
+      // data 배열이 있으면 성공으로 간주
+      const isSuccess = response.data && Array.isArray(response.data);
+
       apis.push({
         name: '쿠팡 Open API',
         description: '쿠팡 마켓플레이스 연동 (로켓그로스)',
-        status: response.code === 'SUCCESS' ? 'connected' : 'error',
+        status: isSuccess ? 'connected' : 'error',
         lastCheck: now,
         details: {
           'Vendor ID': `${vendorId.substring(0, 4)}****`,
           'Access Key': `${accessKey.substring(0, 8)}****`,
           'API Version': 'v2',
         },
+        error: isSuccess ? undefined : `API Response: ${JSON.stringify(response).substring(0, 100)}`,
       });
     }
   } catch (error) {
