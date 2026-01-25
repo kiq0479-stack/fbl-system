@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import nodeFetch from 'node-fetch';
 
 const COUPANG_API_URL = 'https://api-gateway.coupang.com';
 
@@ -77,11 +78,11 @@ export async function coupangRequest<T>(
   // 프록시 에이전트 가져오기 (설정된 경우에만 사용)
   const agent = getProxyAgent();
 
-  const response = await fetch(`${COUPANG_API_URL}${path}`, {
+  // node-fetch 사용 (프록시 agent 지원)
+  const response = await nodeFetch(`${COUPANG_API_URL}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
-    // @ts-expect-error - Node.js fetch supports agent option
     agent,
   });
 
@@ -90,7 +91,7 @@ export async function coupangRequest<T>(
     throw new Error(`Coupang API Error: ${response.status} - ${errorText}`);
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
 }
 
 // 쿠팡 주문 조회 API
