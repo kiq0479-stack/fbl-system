@@ -139,20 +139,24 @@ export async function PUT(request: NextRequest) {
       .from('system_users') as any)
       .update(updateData)
       .eq('id', id)
-      .select()
-      .single();
+      .select();
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: '사용자를 찾을 수 없습니다.' }, { status: 404 });
+    }
+
+    const updatedUser = data[0];
     return NextResponse.json({
       success: true,
       user: {
-        id: data.id,
-        username: data.username,
-        name: data.name,
-        role: data.role,
+        id: updatedUser.id,
+        username: updatedUser.username,
+        name: updatedUser.name,
+        role: updatedUser.role,
       },
     });
   } catch (error) {
