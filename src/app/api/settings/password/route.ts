@@ -43,13 +43,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 비밀번호 검증 (실제 서비스에서는 해시 비교)
-    if (user.password !== currentPassword) {
+    const userData = user as { id: string; password: string };
+    if (userData.password !== currentPassword) {
       return NextResponse.json({ error: '현재 비밀번호가 올바르지 않습니다.' }, { status: 400 });
     }
 
     // 비밀번호 변경
-    const { error: updateError } = await supabase
-      .from('system_users')
+    const { error: updateError } = await (supabase
+      .from('system_users') as any)
       .update({ password: newPassword })
       .eq('id', session.id);
 

@@ -73,8 +73,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 사용자 추가
-    const { data, error } = await supabase
-      .from('system_users')
+    const { data, error } = await (supabase
+      .from('system_users') as any)
       .insert({
         username,
         password, // 실제 서비스에서는 해싱 필요
