@@ -74,12 +74,9 @@ export async function POST() {
     const matched: string[] = [];
     const notMatched: string[] = [];
 
-    // 쿠팡 vendorItemId 목록 (디버깅용)
-    const coupangVendorItemIds = Array.from(inventoryMap.keys()).slice(0, 20);
-
     for (const product of (products as { id: string; sku: string; external_sku: string | null; name: string }[])) {
-      // sku가 쿠팡 vendorItemId이므로 sku로 먼저 매칭
-      // (external_sku는 쿠팡의 externalSkuId로 다른 값임)
+      // sku가 쿠팡 vendorItemId이므로 sku로 매칭
+      // 쿠팡 API는 재고가 있는 상품만 반환하므로, 없으면 0으로 처리
       const coupangQty = inventoryMap.get(product.sku) || 0;
       const existing = existingMap.get(product.id);
 
@@ -90,21 +87,24 @@ export async function POST() {
       }
 
       if (existing) {
+        // 기존 재고가 있으면 업데이트 (쿠팡 API에 없으면 0으로)
         if (existing.quantity !== coupangQty) {
           toUpdate.push({ id: existing.id, quantity: coupangQty });
         }
       } else if (coupangQty > 0) {
+        // 기존 재고가 없고 쿠팡에 재고가 있으면 새로 추가
         toInsert.push({
           product_id: product.id,
           location: 'coupang',
           quantity: coupangQty,
         });
       }
+      // 기존 재고도 없고 쿠팡 재고도 0이면 아무것도 안 함
     }
 
-    console.log('쿠팡 vendorItemIds (샘플):', coupangVendorItemIds);
-    console.log('매칭된 상품:', matched);
-    console.log('매칭 안된 상품:', notMatched);
+    console.log('쿠팡 재고 동기화 결과:');
+    console.log('- 매칭된 상품:', matched.length, matched);
+    console.log('- 매칭 안된 상품 (쿠팡 재고 없음):', notMatched.length);
 
     // 6. 배치 insert
     if (toInsert.length > 0) {
@@ -124,10 +124,18 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: `쿠팡 재고 동기화 완료: 추가 ${toInsert.length}개, 업데이트 ${toUpdate.length}개`,
+      message: `쿠팡 재고 동기화 완료: 추가 ${toInsert.length}개, 업데이트 ${toUpdate.length}개 (쿠팡 재고 있는 상품: ${matched.length}개)`,
       added: toInsert.length,
       updated: toUpdate.length,
       totalCoupangItems: inventoryMap.size,
+      matchedCount: matched.length,
+      notMatchedCount: notMatched.length,
+      // 디버깅용: 매칭된 상품과 안된 상품 목록
+      debug: {
+        matched,
+        notMatched: notMatched.slice(0, 10), // 최대 10개만
+        coupangSample: Array.from(inventoryMap.entries()).slice(0, 10).map(([id, qty]) => `${id}: ${qty}`),
+      }
     });
   } catch (error) {
     console.error('Inventory sync error:', error);
