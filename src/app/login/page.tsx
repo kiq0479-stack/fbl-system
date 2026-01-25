@@ -25,8 +25,9 @@ export default function LoginPage() {
         return;
       }
 
-      // 로그인 성공 - 메인 페이지로 이동
+      // 로그인 성공 - 메인 페이지로 이동 (refresh로 서버 상태 동기화)
       router.push('/');
+      router.refresh();
     } catch {
       setError('서버 오류가 발생했습니다');
     } finally {

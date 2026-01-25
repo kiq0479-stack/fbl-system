@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { User, AuthContextType } from '@/types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -8,25 +9,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
 
-  // 초기 로드 시 세션 확인
-  useEffect(() => {
-    checkSession();
-  }, []);
-
-  const checkSession = async () => {
+  const checkSession = useCallback(async () => {
     try {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
+      } else {
+        setUser(null);
       }
     } catch {
       setUser(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // 초기 로드 및 페이지 변경 시 세션 확인
+  useEffect(() => {
+    checkSession();
+  }, [pathname, checkSession]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
