@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 const COUPANG_API_URL = 'https://api-gateway.coupang.com';
 
@@ -6,6 +7,15 @@ interface CoupangConfig {
   vendorId: string;
   accessKey: string;
   secretKey: string;
+}
+
+// 프록시 에이전트 생성 (환경변수에서 프록시 URL 가져옴)
+function getProxyAgent(): HttpsProxyAgent<string> | undefined {
+  const proxyUrl = process.env.PROXY_URL;
+  if (proxyUrl) {
+    return new HttpsProxyAgent(proxyUrl);
+  }
+  return undefined;
 }
 
 function generateHmacSignature(
@@ -64,10 +74,15 @@ export async function coupangRequest<T>(
     'Authorization': authorization,
   };
 
+  // 프록시 에이전트 가져오기 (설정된 경우에만 사용)
+  const agent = getProxyAgent();
+
   const response = await fetch(`${COUPANG_API_URL}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    // @ts-expect-error - Node.js fetch supports agent option
+    agent,
   });
 
   if (!response.ok) {
