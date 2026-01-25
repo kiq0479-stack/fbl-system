@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-type SettingsTab = 'users' | 'password' | 'api' | 'notifications' | 'warehouse';
+type SettingsTab = 'users' | 'api' | 'notifications' | 'warehouse';
 
 interface SystemUser {
   id: string;
@@ -11,6 +11,14 @@ interface SystemUser {
   name: string;
   role: string;
   created_at: string;
+}
+
+interface EditUserForm {
+  id: string;
+  username: string;
+  name: string;
+  role: string;
+  newPassword: string;
 }
 
 interface ApiStatus {
@@ -31,10 +39,9 @@ export default function SettingsPage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
   const [newUser, setNewUser] = useState({ username: '', password: '', name: '', role: 'staff' });
-
-  // 비밀번호 변경 상태
-  const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
-  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // 사용자 수정 상태
+  const [editingUser, setEditingUser] = useState<EditUserForm | null>(null);
 
   // API 상태
   const [apiStatuses, setApiStatuses] = useState<ApiStatus[]>([]);
@@ -141,49 +148,56 @@ export default function SettingsPage() {
     }
   };
 
-  const handlePasswordChange = async () => {
-    setPasswordMessage(null);
+  const handleEditUser = (u: SystemUser) => {
+    setEditingUser({
+      id: u.id,
+      username: u.username,
+      name: u.name,
+      role: u.role,
+      newPassword: '',
+    });
+  };
 
-    if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
-      setPasswordMessage({ type: 'error', text: '모든 필드를 입력해주세요.' });
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+
+    if (!editingUser.name) {
+      alert('이름을 입력해주세요.');
       return;
     }
 
-    if (passwordForm.new !== passwordForm.confirm) {
-      setPasswordMessage({ type: 'error', text: '새 비밀번호가 일치하지 않습니다.' });
-      return;
-    }
-
-    if (passwordForm.new.length < 6) {
-      setPasswordMessage({ type: 'error', text: '비밀번호는 6자 이상이어야 합니다.' });
+    if (editingUser.newPassword && editingUser.newPassword.length < 6) {
+      alert('비밀번호는 6자 이상이어야 합니다.');
       return;
     }
 
     try {
-      const res = await fetch('/api/settings/password', {
-        method: 'POST',
+      const res = await fetch('/api/settings/users', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          currentPassword: passwordForm.current,
-          newPassword: passwordForm.new,
+          id: editingUser.id,
+          name: editingUser.name,
+          role: editingUser.role,
+          newPassword: editingUser.newPassword || undefined,
         }),
       });
       const data = await res.json();
       
       if (data.success) {
-        setPasswordMessage({ type: 'success', text: '비밀번호가 변경되었습니다.' });
-        setPasswordForm({ current: '', new: '', confirm: '' });
+        setEditingUser(null);
+        loadUsers();
+        alert('사용자 정보가 수정되었습니다.');
       } else {
-        setPasswordMessage({ type: 'error', text: data.error || '비밀번호 변경 실패' });
+        alert(data.error || '수정 실패');
       }
     } catch (error) {
-      setPasswordMessage({ type: 'error', text: '네트워크 오류' });
+      alert('네트워크 오류');
     }
   };
 
   const tabs = [
     { id: 'users' as const, label: '사용자 관리', icon: '👥', adminOnly: true },
-    { id: 'password' as const, label: '비밀번호 변경', icon: '🔐', adminOnly: false },
     { id: 'api' as const, label: 'API 정보', icon: '🔗', adminOnly: true },
     { id: 'notifications' as const, label: '알림 설정', icon: '🔔', adminOnly: false },
     { id: 'warehouse' as const, label: '창고 정보', icon: '🏭', adminOnly: true },
@@ -283,6 +297,75 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {/* 사용자 수정 모달 */}
+          {editingUser && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 space-y-4">
+                <h3 className="text-lg font-semibold">사용자 수정</h3>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">아이디</label>
+                    <input
+                      type="text"
+                      value={editingUser.username}
+                      disabled
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">이름</label>
+                    <input
+                      type="text"
+                      value={editingUser.name}
+                      onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">권한</label>
+                    <select
+                      value={editingUser.role}
+                      onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="staff">직원</option>
+                      <option value="manager">매니저</option>
+                      <option value="admin">관리자</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      새 비밀번호 <span className="text-slate-400 font-normal">(변경 시에만 입력)</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={editingUser.newPassword}
+                      onChange={(e) => setEditingUser({ ...editingUser, newPassword: e.target.value })}
+                      placeholder="변경하지 않으려면 비워두세요"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={handleUpdateUser}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={() => setEditingUser(null)}
+                    className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-300 transition-colors"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
@@ -320,7 +403,13 @@ export default function SettingsPage() {
                       <td className="px-6 py-4 text-slate-500">
                         {new Date(u.created_at).toLocaleDateString('ko-KR')}
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-6 py-4 text-center space-x-2">
+                        <button
+                          onClick={() => handleEditUser(u)}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          수정
+                        </button>
                         {u.username !== user?.username && (
                           <button
                             onClick={() => handleDeleteUser(u.id)}
@@ -336,60 +425,6 @@ export default function SettingsPage() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
-
-      {/* 비밀번호 변경 */}
-      {activeTab === 'password' && (
-        <div className="max-w-md space-y-4">
-          <h2 className="text-lg font-semibold">비밀번호 변경</h2>
-          
-          {passwordMessage && (
-            <div className={`p-3 rounded-lg text-sm ${
-              passwordMessage.type === 'success' 
-                ? 'bg-green-50 text-green-700 border border-green-200' 
-                : 'bg-red-50 text-red-700 border border-red-200'
-            }`}>
-              {passwordMessage.text}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">현재 비밀번호</label>
-              <input
-                type="password"
-                value={passwordForm.current}
-                onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">새 비밀번호</label>
-              <input
-                type="password"
-                value={passwordForm.new}
-                onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">새 비밀번호 확인</label>
-              <input
-                type="password"
-                value={passwordForm.confirm}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={handlePasswordChange}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            비밀번호 변경
-          </button>
         </div>
       )}
 

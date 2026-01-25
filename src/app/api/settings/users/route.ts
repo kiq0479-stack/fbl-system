@@ -105,6 +105,64 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// 사용자 수정
+export async function PUT(request: NextRequest) {
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 });
+  }
+
+  try {
+    const { id, name, role, newPassword } = await request.json();
+
+    if (!id) {
+      return NextResponse.json({ error: '사용자 ID가 필요합니다.' }, { status: 400 });
+    }
+
+    if (!name) {
+      return NextResponse.json({ error: '이름은 필수입니다.' }, { status: 400 });
+    }
+
+    const supabase = await createClient();
+
+    // 업데이트할 데이터 준비
+    const updateData: { name: string; role: string; password?: string } = {
+      name,
+      role: role || 'staff',
+    };
+
+    // 비밀번호가 제공된 경우에만 업데이트
+    if (newPassword && newPassword.length >= 6) {
+      updateData.password = newPassword; // 실제 서비스에서는 해싱 필요
+    }
+
+    const { data, error } = await (supabase
+      .from('system_users') as any)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: data.id,
+        username: data.username,
+        name: data.name,
+        role: data.role,
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
 // 사용자 삭제
 export async function DELETE(request: NextRequest) {
   if (!(await isAdmin())) {
