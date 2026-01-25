@@ -1,109 +1,120 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getSellerProducts, getSellerProductDetail, getRocketGrowthInventory, getCoupangConfig } from '@/lib/coupang';
+import { getSellerProducts, getSellerProductDetail, getRocketGrowthInventory, getCoupangAccounts } from '@/lib/coupang';
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
-    const config = getCoupangConfig();
+    const accounts = getCoupangAccounts();
     
     // 정렬 옵션 (기본값: 오름차순)
     const { searchParams } = new URL(request.url);
     const sortOrder = searchParams.get('sort') || 'asc'; // 'asc' or 'desc'
     
-    // 1. 로켓그로스 재고 API에서 재고 > 0인 vendorItemId 목록 가져오기
-    // 최대 50페이지 = 1000개까지 조회 (무한 루프 방지)
-    const MAX_INVENTORY_PAGES = 50;
-    let allInventory: any[] = [];
-    let nextToken: string | undefined;
-    let pageCount = 0;
-    
-    do {
-      const response = await getRocketGrowthInventory(config, config.vendorId, {
-        nextToken,
-      });
-      allInventory = [...allInventory, ...(response.data || [])];
-      nextToken = response.nextToken || undefined;
-      pageCount++;
-      if (pageCount >= MAX_INVENTORY_PAGES) {
-        console.log(`재고 API 최대 페이지(${MAX_INVENTORY_PAGES}) 도달`);
-        break;
-      }
-    } while (nextToken);
-
-    // 재고 있는 vendorItemId Set 생성 + externalSkuId 맵
+    // 모든 계정에서 재고/상품 수집
     const rocketGrowthIds = new Set<string>();
     const externalSkuMap = new Map<string, string>();  // vendorItemId -> externalSkuId
-    
-    for (const item of allInventory) {
-      const qty = item.inventoryDetails?.totalOrderableQuantity || 0;
-      if (qty > 0) {
-        const vid = String(item.vendorItemId);
-        rocketGrowthIds.add(vid);
-        if (item.externalSkuId) {
-          externalSkuMap.set(vid, String(item.externalSkuId));
-        }
-      }
-    }
-
-    console.log(`로켓그로스 재고 있는 상품: ${rocketGrowthIds.size}개`);
-
-    // 2. 상품 목록 API에서 판매중 상품 가져오기
-    let allProducts: any[] = [];
-    nextToken = undefined;
-    
-    do {
-      const response = await getSellerProducts(config, config.vendorId, {
-        nextToken,
-        maxPerPage: 100,
-      });
-      allProducts = [...allProducts, ...(response.data || [])];
-      nextToken = response.nextToken || undefined;
-    } while (nextToken);
-
-    // 판매중 상품만 필터 (키다리 상품 제외 - 판매중지)
-    const sellingProducts = allProducts.filter(p => 
-      (p.statusName === '승인완료' || p.statusName === '판매중') &&
-      !p.sellerProductName?.includes('키다리')
-    );
-    
-    console.log(`판매중 상품: ${sellingProducts.length}개`);
-
-    // 3. 각 상품의 상세 조회해서 옵션(items) 정보 가져오기
     const productItems: any[] = [];
     
-    for (const product of sellingProducts) {
-      try {
-        const detail = await getSellerProductDetail(config, String(product.sellerProductId));
-        const productData = detail.data;
-        
-        if (productData && productData.items && Array.isArray(productData.items)) {
-          for (const item of productData.items) {
-            // 로켓그로스 vendorItemId는 rocketGrowthItemData에 있음
-            const rocketData = (item as any).rocketGrowthItemData;
-            if (!rocketData) continue;
-            
-            const vid = String(rocketData.vendorItemId);
-            
-            // 로켓그로스 재고가 있는 옵션만 추가
-            if (rocketGrowthIds.has(vid)) {
-              productItems.push({
-                sellerProductId: product.sellerProductId,
-                sellerProductName: product.sellerProductName,
-                vendorItemId: vid,
-                externalSkuId: externalSkuMap.get(vid) || null,  // 쿠팡 externalSkuId (파렛트 적재리스트용)
-                itemName: item.itemName,
-                barcode: rocketData.barcode || null,  // 상품 상세의 rocketGrowthItemData.barcode 사용
-              });
-            }
+    for (const account of accounts) {
+      const config = {
+        vendorId: account.vendorId,
+        accessKey: account.accessKey,
+        secretKey: account.secretKey,
+      };
+      
+      console.log(`[${account.name}] 동기화 시작...`);
+      
+      // 1. 로켓그로스 재고 API에서 재고 > 0인 vendorItemId 목록 가져오기
+      const MAX_INVENTORY_PAGES = 50;
+      let allInventory: any[] = [];
+      let nextToken: string | undefined;
+      let pageCount = 0;
+      
+      do {
+        const response = await getRocketGrowthInventory(config, config.vendorId, {
+          nextToken,
+        });
+        allInventory = [...allInventory, ...(response.data || [])];
+        nextToken = response.nextToken || undefined;
+        pageCount++;
+        if (pageCount >= MAX_INVENTORY_PAGES) {
+          console.log(`[${account.name}] 재고 API 최대 페이지(${MAX_INVENTORY_PAGES}) 도달`);
+          break;
+        }
+      } while (nextToken);
+
+      // 재고 있는 vendorItemId Set 생성 + externalSkuId 맵
+      for (const item of allInventory) {
+        const qty = item.inventoryDetails?.totalOrderableQuantity || 0;
+        if (qty > 0) {
+          const vid = String(item.vendorItemId);
+          rocketGrowthIds.add(vid);
+          if (item.externalSkuId) {
+            externalSkuMap.set(vid, String(item.externalSkuId));
           }
         }
-      } catch (err) {
-        console.error(`Failed to get detail for ${product.sellerProductId}:`, err);
+      }
+
+      console.log(`[${account.name}] 로켓그로스 재고 있는 상품: ${allInventory.filter(i => (i.inventoryDetails?.totalOrderableQuantity || 0) > 0).length}개`);
+
+      // 2. 상품 목록 API에서 판매중 상품 가져오기
+      let allProducts: any[] = [];
+      nextToken = undefined;
+      
+      do {
+        const response = await getSellerProducts(config, config.vendorId, {
+          nextToken,
+          maxPerPage: 100,
+        });
+        allProducts = [...allProducts, ...(response.data || [])];
+        nextToken = response.nextToken || undefined;
+      } while (nextToken);
+
+      // 판매중 상품만 필터 (키다리 상품 제외 - 판매중지)
+      const sellingProducts = allProducts.filter(p => 
+        (p.statusName === '승인완료' || p.statusName === '판매중') &&
+        !p.sellerProductName?.includes('키다리')
+      );
+      
+      console.log(`[${account.name}] 판매중 상품: ${sellingProducts.length}개`);
+
+      // 3. 각 상품의 상세 조회해서 옵션(items) 정보 가져오기
+      for (const product of sellingProducts) {
+        try {
+          const detail = await getSellerProductDetail(config, String(product.sellerProductId));
+          const productData = detail.data;
+          
+          if (productData && productData.items && Array.isArray(productData.items)) {
+            for (const item of productData.items) {
+              // 로켓그로스 vendorItemId는 rocketGrowthItemData에 있음
+              const rocketData = (item as any).rocketGrowthItemData;
+              if (!rocketData) continue;
+              
+              const vid = String(rocketData.vendorItemId);
+              
+              // 로켓그로스 재고가 있는 옵션만 추가
+              if (rocketGrowthIds.has(vid)) {
+                productItems.push({
+                  sellerProductId: product.sellerProductId,
+                  sellerProductName: product.sellerProductName,
+                  vendorItemId: vid,
+                  externalSkuId: externalSkuMap.get(vid) || null,  // 쿠팡 externalSkuId (파렛트 적재리스트용)
+                  itemName: item.itemName,
+                  barcode: rocketData.barcode || null,  // 상품 상세의 rocketGrowthItemData.barcode 사용
+                  accountName: account.name,  // 계정명 추가
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`[${account.name}] Failed to get detail for ${product.sellerProductId}:`, err);
+        }
       }
     }
 
-    console.log(`판매중 + 로켓그로스 재고 있는 옵션: ${productItems.length}개`);
+    console.log(`전체 계정 합계 - 로켓그로스 재고 있는 상품: ${rocketGrowthIds.size}개`);
+    console.log(`전체 계정 합계 - 판매중 + 로켓그로스 재고 있는 옵션: ${productItems.length}개`);
 
     if (productItems.length === 0) {
       return NextResponse.json({
