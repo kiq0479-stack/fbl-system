@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SidebarItem = ({ 
   href, 
@@ -42,6 +43,9 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   return (
     <>
       {/* 모바일 오버레이 */}
@@ -137,17 +141,22 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             입고 관리
           </SidebarItem>
 
-          <div className="px-6 mt-8 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            마켓플레이스
-          </div>
+          {/* 마켓플레이스 - admin만 표시 */}
+          {isAdmin && (
+            <>
+              <div className="px-6 mt-8 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                마켓플레이스
+              </div>
 
-          <SidebarItem href="/logistics/coupang" onClick={onClose} icon={
-            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-          }>
-            쿠팡 주문
-          </SidebarItem>
+              <SidebarItem href="/logistics/coupang" onClick={onClose} icon={
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              }>
+                쿠팡 주문
+              </SidebarItem>
+            </>
+          )}
 
           <div className="px-6 mt-8 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
             System
@@ -166,11 +175,11 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
         <div className="p-4 border-t border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
-              AD
+              {user?.name?.charAt(0) || '?'}
             </div>
             <div>
-              <div className="text-sm font-medium text-white">Admin User</div>
-              <div className="text-xs text-slate-500">admin@fbl.com</div>
+              <div className="text-sm font-medium text-white">{user?.name || '사용자'}</div>
+              <div className="text-xs text-slate-500">{user?.username || ''}</div>
             </div>
           </div>
         </div>
