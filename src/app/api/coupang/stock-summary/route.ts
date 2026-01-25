@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRocketGrowthInventory, getRocketGrowthOrders, getCoupangConfig } from '@/lib/coupang';
 import { createClient } from '@/lib/supabase/server';
 
+// 최대 페이지 수 제한 (무한 루프 방지)
+const MAX_INVENTORY_PAGES = 5;
+const MAX_ORDER_PAGES = 3;
+
 // 날짜 계산 헬퍼
 function getDateString(daysAgo: number): string {
   const date = new Date();
@@ -17,9 +21,10 @@ export async function GET(request: NextRequest) {
   try {
     const config = getCoupangConfig();
     
-    // 1. 재고 데이터 가져오기 (페이징 처리)
+    // 1. 재고 데이터 가져오기 (최대 MAX_INVENTORY_PAGES 페이지)
     let allInventory: any[] = [];
     let nextToken: string | undefined;
+    let inventoryPages = 0;
     
     do {
       const inventoryResponse = await getRocketGrowthInventory(config, config.vendorId, {
@@ -27,9 +32,17 @@ export async function GET(request: NextRequest) {
       });
       allInventory = [...allInventory, ...(inventoryResponse.data || [])];
       nextToken = inventoryResponse.nextToken;
+      inventoryPages++;
+      
+      if (inventoryPages >= MAX_INVENTORY_PAGES) {
+        console.log(`재고 API 최대 페이지(${MAX_INVENTORY_PAGES}) 도달`);
+        break;
+      }
     } while (nextToken);
 
-    // 2. 7일간 주문 데이터 가져오기 (상품명 + 7일 판매량)
+    console.log(`재고 조회 완료: ${allInventory.length}개 (${inventoryPages}페이지)`);
+
+    // 2. 7일간 주문 데이터 가져오기 (최대 MAX_ORDER_PAGES 페이지)
     const today = getDateString(0);
     const sevenDaysAgo = getDateString(7);
     
@@ -38,6 +51,7 @@ export async function GET(request: NextRequest) {
     
     let allOrders: any[] = [];
     let orderNextToken: string | undefined;
+    let orderPages = 0;
     
     do {
       const ordersResponse = await getRocketGrowthOrders(config, {
@@ -48,7 +62,15 @@ export async function GET(request: NextRequest) {
       });
       allOrders = [...allOrders, ...(ordersResponse.data || [])];
       orderNextToken = ordersResponse.nextToken;
+      orderPages++;
+      
+      if (orderPages >= MAX_ORDER_PAGES) {
+        console.log(`주문 API 최대 페이지(${MAX_ORDER_PAGES}) 도달`);
+        break;
+      }
     } while (orderNextToken);
+
+    console.log(`주문 조회 완료: ${allOrders.length}개 (${orderPages}페이지)`);
 
     // 3. 주문에서 상품명 매핑 + 7일 판매량 계산
     const nameMap: Record<number, string> = {};
