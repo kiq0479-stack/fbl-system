@@ -42,10 +42,10 @@ export async function POST() {
 
     console.log(`총 상품: ${inventoryMap.size}개`);
 
-    // 3. 우리 DB의 상품 목록 조회 (SKU 매칭용)
+    // 3. 우리 DB의 상품 목록 조회 (SKU 및 external_sku 매칭용)
     const { data: products } = await supabase
       .from('products')
-      .select('id, sku, name');
+      .select('id, sku, external_sku, name');
 
     if (!products || products.length === 0) {
       return NextResponse.json({
@@ -72,8 +72,9 @@ export async function POST() {
     const toInsert: any[] = [];
     const toUpdate: { id: string; quantity: number }[] = [];
 
-    for (const product of (products as { id: string; sku: string; name: string }[])) {
-      const coupangQty = inventoryMap.get(product.sku) || 0;
+    for (const product of (products as { id: string; sku: string; external_sku: string | null; name: string }[])) {
+      // external_sku(쿠팡 vendorItemId) 또는 sku로 매칭 시도
+      const coupangQty = inventoryMap.get(product.external_sku || '') || inventoryMap.get(product.sku) || 0;
       const existing = existingMap.get(product.id);
 
       if (existing) {
