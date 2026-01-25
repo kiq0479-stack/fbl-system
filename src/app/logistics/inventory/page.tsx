@@ -473,14 +473,14 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">재고 관리</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">재고 관리</h1>
+        <div className="flex flex-wrap gap-2">
           {activeTab === 'product' && (
             <button
               onClick={handleSyncCoupangInventory}
               disabled={syncingCoupang}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-orange-400 transition-colors text-sm font-medium flex items-center gap-2"
+              className="px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-orange-400 transition-colors text-xs sm:text-sm font-medium flex items-center gap-1 whitespace-nowrap"
             >
               {syncingCoupang ? (
                 <>
@@ -488,35 +488,35 @@ export default function InventoryPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  동기화 중...
+                  <span className="hidden sm:inline">동기화 중...</span>
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  쿠팡 재고 동기화
+                  <span className="hidden sm:inline">쿠팡 동기화</span>
                 </>
               )}
             </button>
           )}
           <button
             onClick={() => setModalType('in')}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+            className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium whitespace-nowrap"
           >
-            + 입고
+            +입고
           </button>
           <button
             onClick={() => setModalType('out')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+            className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm font-medium whitespace-nowrap"
           >
-            - 출고
+            -출고
           </button>
           <button
             onClick={() => setModalType('transfer')}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+            className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs sm:text-sm font-medium whitespace-nowrap"
           >
-            ↔ 이동
+            이동
           </button>
         </div>
       </div>
@@ -630,27 +630,29 @@ export default function InventoryPage() {
       )}
 
       {/* 검색 & 정렬 */}
-      <div className="flex items-center gap-4">
-        <input
-          type="text"
-          placeholder="상품명, SKU 검색..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-        />
-        {search && (
-          <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600">✕</button>
-        )}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 flex-1">
+          <input
+            type="text"
+            placeholder="상품명, SKU 검색..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 sm:flex-none px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-64"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600 p-2">✕</button>
+          )}
+        </div>
         <button
           onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-600 flex items-center gap-1"
+          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-600 flex items-center justify-center gap-1 whitespace-nowrap"
         >
           상품명 {sortOrder === 'asc' ? '↑' : '↓'}
         </button>
       </div>
 
       {/* 테이블 */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
         {activeTab === 'coupang_inbound' ? (
           // 쿠팡 입고중 테이블
           <table className="w-full">

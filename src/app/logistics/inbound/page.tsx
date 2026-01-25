@@ -411,16 +411,16 @@ export default function InboundPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">입고 관리</h1>
-          <p className="text-sm text-slate-500 mt-1">물류센터 입고 예정 및 현황을 관리합니다.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">입고 관리</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">물류센터 입고 예정 및 현황을 관리합니다.</p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+          className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors whitespace-nowrap"
         >
-          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           입고 등록
@@ -428,8 +428,8 @@ export default function InboundPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-slate-200">
-        <nav className="flex gap-4">
+      <div className="border-b border-slate-200 overflow-x-auto">
+        <nav className="flex gap-2 sm:gap-4 min-w-max">
           <button
             onClick={() => setActiveFilter('all')}
             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
@@ -542,27 +542,29 @@ export default function InboundPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       {getStatusBadge(inbound.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center space-x-2">
-                      <button 
-                        onClick={() => { setSelectedInbound(inbound); setIsDetailOpen(true); }}
-                        className="text-blue-600 hover:text-blue-900"
-                      >상세</button>
-                      <button 
-                        onClick={() => handleDownloadDocx(inbound)}
-                        className="text-slate-600 hover:text-slate-900"
-                      >출력</button>
-                      <button 
-                        onClick={() => { setSelectedInbound(inbound); setIsStatusModalOpen(true); }}
-                        className="text-green-600 hover:text-green-900"
-                      >상태변경</button>
-                      <button 
-                        onClick={() => handleOpenEdit(inbound)}
-                        className="text-orange-600 hover:text-orange-900"
-                      >수정</button>
-                      <button 
-                        onClick={() => handleDelete(inbound)}
-                        className="text-red-600 hover:text-red-900"
-                      >삭제</button>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-center">
+                      <div className="flex flex-wrap justify-center gap-1 sm:gap-2">
+                        <button 
+                          onClick={() => { setSelectedInbound(inbound); setIsDetailOpen(true); }}
+                          className="text-blue-600 hover:text-blue-900 px-1"
+                        >상세</button>
+                        <button 
+                          onClick={() => handleDownloadDocx(inbound)}
+                          className="text-slate-600 hover:text-slate-900 px-1"
+                        >출력</button>
+                        <button 
+                          onClick={() => { setSelectedInbound(inbound); setIsStatusModalOpen(true); }}
+                          className="text-green-600 hover:text-green-900 px-1"
+                        >상태</button>
+                        <button 
+                          onClick={() => handleOpenEdit(inbound)}
+                          className="text-orange-600 hover:text-orange-900 px-1"
+                        >수정</button>
+                        <button 
+                          onClick={() => handleDelete(inbound)}
+                          className="text-red-600 hover:text-red-900 px-1"
+                        >삭제</button>
+                      </div>
                     </td>
                   </tr>
                 ))
