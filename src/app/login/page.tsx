@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,22 +18,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      const success = await login(username, password);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || '로그인에 실패했습니다');
+      if (!success) {
+        setError('로그인에 실패했습니다. 아이디와 비밀번호를 확인하세요.');
         return;
       }
 
       // 로그인 성공 - 메인 페이지로 이동
       router.push('/');
-      router.refresh();
     } catch {
       setError('서버 오류가 발생했습니다');
     } finally {
