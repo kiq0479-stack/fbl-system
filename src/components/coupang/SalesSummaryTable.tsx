@@ -164,16 +164,16 @@ export default function SalesSummaryTable() {
       </div>
 
       {/* 테이블 */}
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+        <table className="w-full text-sm" style={{ touchAction: 'pan-y' }}>
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-4 py-3 font-medium text-slate-600 w-8"></th>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">상품명</th>
-              <th className="text-right px-4 py-3 font-medium text-slate-600 whitespace-nowrap">7일</th>
-              <th className="text-right px-4 py-3 font-medium text-slate-600 whitespace-nowrap">30일</th>
-              <th className="text-right px-4 py-3 font-medium text-slate-600 whitespace-nowrap">60일</th>
-              <th className="text-right px-4 py-3 font-medium text-slate-600 whitespace-nowrap">120일</th>
+              <th className="text-left px-3 py-3 font-medium text-slate-600 w-8"></th>
+              <th className="text-left px-3 py-3 font-medium text-slate-600">상품명</th>
+              <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">7일</th>
+              <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">30일</th>
+              <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">60일</th>
+              <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">120일</th>
             </tr>
           </thead>
           <tbody>
@@ -184,12 +184,15 @@ export default function SalesSummaryTable() {
                 <Fragment key={group.key}>
                   {/* 메인 행 — 항상 클릭 가능 */}
                   <tr
-                    className={`border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors ${
+                    role="button"
+                    tabIndex={0}
+                    className={`border-b border-slate-100 cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors select-none ${
                       isExpanded ? 'bg-slate-50' : ''
                     }`}
+                    style={{ touchAction: 'manipulation' }}
                     onClick={() => toggleExpand(group.key)}
                   >
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 py-3 text-center">
                       <span className={`inline-block transition-transform text-xs ${isExpanded ? 'rotate-90' : ''}`}>
                         ▶
                       </span>
