@@ -7,10 +7,6 @@
     {
       "path": "/api/coupang/sync-cron",
       "schedule": "30 21 * * *"
-    },
-    {
-      "path": "/api/naver/orders/sync-cron",
-      "schedule": "0 22 * * *"
     }
   ]
 }
