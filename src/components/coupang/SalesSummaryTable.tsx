@@ -164,11 +164,12 @@ export default function SalesSummaryTable() {
       </div>
 
       {/* 테이블 */}
-      <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
-        <table className="w-full text-sm" style={{ touchAction: 'pan-y' }}>
+      <div className="bg-white border border-slate-200 rounded-lg overflow-clip">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-3 py-3 font-medium text-slate-600 w-8"></th>
+              <th className="text-left px-3 py-3 font-medium text-slate-600 w-10"></th>
               <th className="text-left px-3 py-3 font-medium text-slate-600">상품명</th>
               <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">7일</th>
               <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">30일</th>
@@ -182,31 +183,35 @@ export default function SalesSummaryTable() {
 
               return (
                 <Fragment key={group.key}>
-                  {/* 메인 행 — 항상 클릭 가능 */}
+                  {/* 메인 행 */}
                   <tr
-                    role="button"
-                    tabIndex={0}
-                    className={`border-b border-slate-100 cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors select-none ${
+                    className={`border-b border-slate-100 transition-colors ${
                       isExpanded ? 'bg-slate-50' : ''
                     }`}
-                    style={{ touchAction: 'manipulation' }}
-                    onClick={() => toggleExpand(group.key)}
                   >
-                    <td className="px-3 py-3 text-center">
-                      <span className={`inline-block transition-transform text-xs ${isExpanded ? 'rotate-90' : ''}`}>
-                        ▶
-                      </span>
+                    <td className="px-2 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpand(group.key)}
+                        className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-slate-200 active:bg-slate-300 transition-colors"
+                        aria-expanded={isExpanded}
+                        aria-label={`${group.productName} 상세 ${isExpanded ? '접기' : '펼치기'}`}
+                      >
+                        <span className={`inline-block transition-transform text-xs ${isExpanded ? 'rotate-90' : ''}`}>
+                          ▶
+                        </span>
+                      </button>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3 cursor-pointer" onClick={() => toggleExpand(group.key)}>
                       <div className="font-medium text-slate-900">{group.productName}</div>
                       {group.sku && (
                         <div className="text-xs text-slate-400 mt-0.5">SKU: {group.sku}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-700">{group.totalSales.d7.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900">{group.totalSales.d30.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-700">{group.totalSales.d60.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-700">{group.totalSales.d120.toLocaleString()}</td>
+                    <td className="px-3 py-3 text-right font-mono text-slate-700">{group.totalSales.d7.toLocaleString()}</td>
+                    <td className="px-3 py-3 text-right font-mono font-semibold text-slate-900">{group.totalSales.d30.toLocaleString()}</td>
+                    <td className="px-3 py-3 text-right font-mono text-slate-700">{group.totalSales.d60.toLocaleString()}</td>
+                    <td className="px-3 py-3 text-right font-mono text-slate-700">{group.totalSales.d120.toLocaleString()}</td>
                   </tr>
 
                   {/* 펼침: 항상 3개 소스 행 표시 */}
@@ -235,6 +240,7 @@ export default function SalesSummaryTable() {
             })}
           </tbody>
         </table>
+        </div>
 
         {grouped.length === 0 && (
           <div className="py-12 text-center text-slate-400">
