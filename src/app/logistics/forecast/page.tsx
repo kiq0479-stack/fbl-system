@@ -44,12 +44,22 @@ export default function ForecastPage() {
   const [onlyRisk, setOnlyRisk] = useState(false);
   const [search, setSearch] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const toggleCategory = (cat: string) => {
     setCollapsedCategories(prev => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);
       else next.add(cat);
+      return next;
+    });
+  };
+
+  const toggleItem = (id: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -318,37 +328,110 @@ export default function ForecastPage() {
                         </td>
                       </tr>
                       {/* 상품 행 */}
-                      {!isCollapsed && items.map(item => (
-                        <tr 
-                          key={item.product_id} 
-                          className={`hover:bg-slate-50 transition-colors ${item.stockout_risk ? 'bg-red-50/50' : ''}`}
-                        >
-                          <td className="px-4 py-3 font-medium text-slate-900 max-w-[200px] truncate" title={item.name}>
-                            {item.name}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-slate-900 bg-blue-50/50">
-                            {formatNumber(item.total_qty)}
-                          </td>
-                          <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_7d)}</td>
-                          <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_30d)}</td>
-                          <td className="px-4 py-3 text-right font-medium text-slate-700 bg-yellow-50/50">
-                            {formatNumber(item.sales_60d)}
-                          </td>
-                          <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_90d)}</td>
-                          <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_120d)}</td>
-                          <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_60d, true)}</td>
-                          <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_90d, true)}</td>
-                          <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_120d, true)}</td>
-                          <td className="px-4 py-3 text-right bg-green-50/50">{formatNumber(item.coupang_need_40d, true)}</td>
-                          <td className="px-4 py-3 text-center">
-                            {item.stockout_risk && (
-                              <span className="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-600 rounded-full font-bold text-xs">
-                                O
-                              </span>
+                      {!isCollapsed && items.map(item => {
+                        const isItemExpanded = expandedItems.has(item.product_id);
+                        return (
+                          <Fragment key={item.product_id}>
+                            <tr 
+                              className={`transition-colors ${item.stockout_risk ? 'bg-red-50/50' : ''} ${isItemExpanded ? 'bg-blue-50/30' : ''}`}
+                            >
+                              <td className="px-3 py-3">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleItem(item.product_id)}
+                                  className="flex items-start gap-1.5 w-full text-left hover:opacity-80 active:opacity-60"
+                                  aria-expanded={isItemExpanded}
+                                >
+                                  <span className={`inline-block transition-transform text-[10px] mt-1 shrink-0 text-slate-400 ${isItemExpanded ? 'rotate-90' : ''}`}>
+                                    ▶
+                                  </span>
+                                  <span className="font-medium text-slate-900 line-clamp-2">{item.name}</span>
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 text-right font-semibold text-slate-900 bg-blue-50/50">
+                                {formatNumber(item.total_qty)}
+                              </td>
+                              <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_7d)}</td>
+                              <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_30d)}</td>
+                              <td className="px-4 py-3 text-right font-medium text-slate-700 bg-yellow-50/50">
+                                {formatNumber(item.sales_60d)}
+                              </td>
+                              <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_90d)}</td>
+                              <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_120d)}</td>
+                              <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_60d, true)}</td>
+                              <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_90d, true)}</td>
+                              <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_120d, true)}</td>
+                              <td className="px-4 py-3 text-right bg-green-50/50">{formatNumber(item.coupang_need_40d, true)}</td>
+                              <td className="px-4 py-3 text-center">
+                                {item.stockout_risk && (
+                                  <span className="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-600 rounded-full font-bold text-xs">
+                                    O
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                            {/* 펼침: 모바일에서 잘리는 데이터를 카드로 표시 */}
+                            {isItemExpanded && (
+                              <tr className="bg-slate-50/80">
+                                <td colSpan={12} className="px-4 py-3">
+                                  <div className="ml-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">총수량</span>
+                                      <span className="font-semibold text-slate-900 sm:ml-2">{formatNumber(item.total_qty)}</span>
+                                    </div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">창고</span>
+                                      <span className="font-medium sm:ml-2">{formatNumber(item.warehouse_qty)}</span>
+                                    </div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">쿠팡</span>
+                                      <span className="font-medium sm:ml-2">{formatNumber(item.coupang_qty)}</span>
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-3 md:col-span-4 border-t border-slate-200 mt-1 pt-2 font-medium text-slate-600">판매량</div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">7일</span>
+                                      <span className="sm:ml-2">{formatNumber(item.sales_7d)}</span>
+                                    </div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">30일</span>
+                                      <span className="sm:ml-2">{formatNumber(item.sales_30d)}</span>
+                                    </div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">60일</span>
+                                      <span className="font-medium sm:ml-2">{formatNumber(item.sales_60d)}</span>
+                                    </div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">90일</span>
+                                      <span className="sm:ml-2">{formatNumber(item.sales_90d)}</span>
+                                    </div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">120일</span>
+                                      <span className="sm:ml-2">{formatNumber(item.sales_120d)}</span>
+                                    </div>
+                                    <div className="col-span-2 sm:col-span-3 md:col-span-4 border-t border-slate-200 mt-1 pt-2 font-medium text-slate-600">필요 재고</div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">60일</span>
+                                      <span className="sm:ml-2">{formatNumber(item.need_60d, true)}</span>
+                                    </div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">90일</span>
+                                      <span className="sm:ml-2">{formatNumber(item.need_90d, true)}</span>
+                                    </div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">120일</span>
+                                      <span className="sm:ml-2">{formatNumber(item.need_120d, true)}</span>
+                                    </div>
+                                    <div className="flex justify-between sm:block">
+                                      <span className="text-slate-500">쿠팡 40일</span>
+                                      <span className="sm:ml-2">{formatNumber(item.coupang_need_40d, true)}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
                             )}
-                          </td>
-                        </tr>
-                      ))}
+                          </Fragment>
+                        );
+                      })}
                     </Fragment>
                   );
                 })}
