@@ -1,457 +1,40 @@
 /**
  * ============================================================================
- * 판매량 집계 API
+ * 판매량 집계 API (DB 기반)
  * ============================================================================
- * 
- * 쿠팡 로켓그로스 + 쿠팡 판매자배송 + 네이버 스토어의 기간별 판매량을 집계합니다.
- * 
- * ## 데이터 소스 (3개)
- * 1. 쿠팡 로켓그로스 (coupang_rocket) — 로켓그로스 주문 API + 재고 API
- * 2. 쿠팡 판매자배송 (coupang_seller) — 판매자 배송 주문 API
- * 3. 네이버 스마트스토어 (naver) — 네이버 커머스 API
- * 
- * ## 응답 형태
- * ```json
- * {
- *   "success": true,
- *   "data": [
- *     {
- *       "vendorItemId": 12345,
- *       "productName": "상품명",
- *       "sku": "SKU-001",
- *       "sales": { "d7": 10, "d30": 45, "d60": 88, "d90": 120, "d120": 155 },
- *       "source": "coupang_rocket"
- *     }
- *   ]
- * }
- * ```
- * 
- * ## 쿠팡 API 제한
- * - 최대 조회 기간: 30일
- * - 분당 호출 제한: 50회
- * - 120일 조회 시 최소 4번 분할 호출 필요
- * 
+ *
+ * Supabase DB에 동기화된 데이터를 기반으로 기간별 판매량을 집계합니다.
+ * 기존 쿠팡 API 실시간 호출 방식에서 DB 쿼리 방식으로 전환. (Vercel 타임아웃 해결)
+ *
+ * ## 데이터 소스
+ * 1. 쿠팡 판매자배송 (coupang_seller) — coupang_orders + coupang_order_items
+ * 2. 쿠팡 로켓그로스 (coupang_rocket) — coupang_revenues
+ * 3. 네이버 스마트스토어 (naver) — TODO: 추후 추가
+ *
  * @route GET /api/sales/summary
- * @query accountId - 쿠팡 계정 ID (선택, 기본: 전체 계정)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getRocketGrowthOrders,
-  getRocketGrowthInventory,
-  getOrders,
-  getCoupangAccounts,
-  CoupangAccount,
-  CoupangConfig,
-  CoupangOrderSheet,
-  RocketGrowthOrder,
-} from '@/lib/coupang';
-import { getNaverSalesSummary, isNaverCommerceAvailable } from '@/lib/naver-commerce';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+export const maxDuration = 30;
 
 // ============================================================================
-// 상수
+// Supabase 초기화
 // ============================================================================
 
-/** 판매량 집계 기간 (일수) */
-const SALES_PERIODS = [7, 30, 60, 90, 120] as const;
+let _supabase: SupabaseClient | null = null;
 
-/** 쿠팡 API 최대 조회 기간 (일) */
-const COUPANG_MAX_DAYS = 30;
-
-/** 주문 페이지네이션 최대 페이지 (무한 루프 방지) */
-const MAX_ORDER_PAGES = 20;
-
-/** API 호출 간 딜레이 (ms) - 분당 50회 제한 대응 */
-const API_CALL_DELAY_MS = 300;
-
-// ============================================================================
-// 헬퍼 함수
-// ============================================================================
-
-/**
- * N일 전 날짜 문자열 반환 (YYYY-MM-DD)
- */
-function getDateDaysAgo(days: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date.toISOString().split('T')[0];
-}
-
-/**
- * YYYY-MM-DD를 yyyymmdd로 변환 (쿠팡 API 형식)
- */
-function toYYYYMMDD(dateStr: string): string {
-  return dateStr.replace(/-/g, '');
-}
-
-/**
- * 오늘 날짜 문자열 (YYYY-MM-DD)
- */
-function getToday(): string {
-  return new Date().toISOString().split('T')[0];
-}
-
-/**
- * 지정 밀리초 대기 (Rate Limit 대응)
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * 긴 기간을 30일 이하 구간으로 분할
- * 
- * 예: 90일 → [{from: -90, to: -61}, {from: -60, to: -31}, {from: -30, to: 0}]
- * 
- * @param totalDays - 전체 조회 기간 (일)
- * @returns 날짜 구간 배열 [{from: 'YYYY-MM-DD', to: 'YYYY-MM-DD'}, ...]
- */
-function splitDateRange(totalDays: number): Array<{ from: string; to: string }> {
-  const ranges: Array<{ from: string; to: string }> = [];
-  const today = getToday();
-  
-  let remaining = totalDays;
-  let endOffset = 0;
-
-  while (remaining > 0) {
-    const chunkDays = Math.min(remaining, COUPANG_MAX_DAYS);
-    const startOffset = endOffset + chunkDays;
-
-    ranges.push({
-      from: getDateDaysAgo(startOffset),
-      to: getDateDaysAgo(endOffset),
-    });
-
-    endOffset = startOffset;
-    remaining -= chunkDays;
-  }
-
-  return ranges;
-}
-
-// ============================================================================
-// 쿠팡 데이터 수집
-// ============================================================================
-
-/**
- * 단일 기간의 로켓그로스 주문 전체 수집 (페이지네이션 포함)
- */
-async function fetchRocketOrdersForPeriod(
-  config: CoupangConfig,
-  vendorId: string,
-  dateFrom: string,
-  dateTo: string
-): Promise<RocketGrowthOrder[]> {
-  const allOrders: RocketGrowthOrder[] = [];
-  let nextToken: string | undefined;
-  let pages = 0;
-
-  try {
-    do {
-      const response = await getRocketGrowthOrders(config, {
-        vendorId,
-        paidDateFrom: toYYYYMMDD(dateFrom),
-        paidDateTo: toYYYYMMDD(dateTo),
-        nextToken,
-      });
-
-      allOrders.push(...(response.data || []));
-      nextToken = response.nextToken;
-      pages++;
-
-      if (pages >= MAX_ORDER_PAGES) {
-        console.warn(`[SalesSummary] Max pages reached for ${dateFrom}~${dateTo}`);
-        break;
-      }
-
-      // Rate limit 대응
-      if (nextToken) {
-        await sleep(API_CALL_DELAY_MS);
-      }
-    } while (nextToken);
-  } catch (error) {
-    console.error(`[SalesSummary] Order fetch error (${dateFrom}~${dateTo}):`, error);
-  }
-
-  return allOrders;
-}
-
-/**
- * 단일 기간의 판매자 배송 주문 전체 수집
- * 
- * 판매자 배송 API는 createdAtFrom/To (YYYY-MM-DD) 형식 사용.
- * 주문 상태 구분 없이 전체 조회 (ACCEPT~FINAL_DELIVERY).
- */
-async function fetchSellerOrdersForPeriod(
-  config: CoupangConfig,
-  vendorId: string,
-  dateFrom: string,
-  dateTo: string
-): Promise<CoupangOrderSheet[]> {
-  const allOrders: CoupangOrderSheet[] = [];
-
-  // 판매자 배송 주문 상태별 조회 (전체 상태 커버)
-  const statuses = ['ACCEPT', 'INSTRUCT', 'DEPARTURE', 'DELIVERING', 'FINAL_DELIVERY'];
-
-  for (const status of statuses) {
-    try {
-      const response = await getOrders(config, {
-        vendorId,
-        createdAtFrom: dateFrom,
-        createdAtTo: dateTo,
-        status,
-        maxPerPage: 50,
-      });
-
-      allOrders.push(...(response.data || []));
-      await sleep(API_CALL_DELAY_MS);
-    } catch (error) {
-      // 특정 상태 조회 실패 시 무시하고 계속
-      console.warn(`[SalesSummary] Seller order fetch error (${status}, ${dateFrom}~${dateTo}):`, error);
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) {
+      throw new Error('Supabase environment variables are not configured');
     }
+    _supabase = createClient(url, key);
   }
-
-  return allOrders;
-}
-
-/**
- * 단일 계정의 판매자 배송 판매량 수집
- * 
- * 120일간 주문 데이터를 30일씩 분할 수집하여 기간별 집계.
- */
-async function fetchSellerSalesData(account: CoupangAccount): Promise<SalesSummaryItem[]> {
-  const config: CoupangConfig = {
-    vendorId: account.vendorId,
-    accessKey: account.accessKey,
-    secretKey: account.secretKey,
-  };
-
-  const maxDays = SALES_PERIODS[SALES_PERIODS.length - 1]; // 120일
-  const dateRanges = splitDateRange(maxDays);
-
-  // vendorItemId → 기간별 판매량
-  const salesByItem = new Map<number, {
-    productName: string;
-    totalByPeriod: Record<string, number>;
-  }>();
-
-  for (let i = 0; i < dateRanges.length; i++) {
-    const range = dateRanges[i];
-    console.log(`[SalesSummary][${account.name}] 판매자배송 주문 조회: ${range.from} ~ ${range.to} (${i + 1}/${dateRanges.length})`);
-
-    const orders = await fetchSellerOrdersForPeriod(
-      config,
-      account.vendorId,
-      range.from,
-      range.to
-    );
-
-    // 주문별 아이템 집계
-    for (const order of orders) {
-      const orderedDate = new Date(order.orderedAt);
-      const daysAgo = Math.ceil((Date.now() - orderedDate.getTime()) / (24 * 60 * 60 * 1000));
-
-      for (const item of (order.orderItems || [])) {
-        if (!salesByItem.has(item.vendorItemId)) {
-          salesByItem.set(item.vendorItemId, {
-            productName: item.vendorItemName || item.sellerProductName || '',
-            totalByPeriod: {},
-          });
-        }
-
-        const entry = salesByItem.get(item.vendorItemId)!;
-        // 상품명 업데이트 (더 구체적인 이름 우선)
-        if (item.vendorItemName) {
-          entry.productName = item.vendorItemName;
-        }
-
-        const qty = item.shippingCount || 1;
-
-        for (const period of SALES_PERIODS) {
-          const key = `d${period}`;
-          if (daysAgo <= period) {
-            entry.totalByPeriod[key] = (entry.totalByPeriod[key] || 0) + qty;
-          }
-        }
-      }
-    }
-
-    // 구간 간 Rate Limit 대응
-    if (i < dateRanges.length - 1) {
-      await sleep(API_CALL_DELAY_MS * 2);
-    }
-  }
-
-  // 결과 생성
-  const results: SalesSummaryItem[] = [];
-
-  for (const [vendorItemId, data] of salesByItem) {
-    results.push({
-      vendorItemId,
-      productName: data.productName || `Unknown Seller Item (${vendorItemId})`,
-      sku: null,
-      sales: {
-        d7: data.totalByPeriod['d7'] || 0,
-        d30: data.totalByPeriod['d30'] || 0,
-        d60: data.totalByPeriod['d60'] || 0,
-        d90: data.totalByPeriod['d90'] || 0,
-        d120: data.totalByPeriod['d120'] || 0,
-      },
-      source: 'coupang_seller',
-      accountName: account.name,
-    });
-  }
-
-  console.log(`[SalesSummary][${account.name}] 판매자배송 상품: ${results.length}개`);
-  return results;
-}
-
-/**
- * 단일 계정의 로켓그로스 기간별 판매량 수집
- * 
- * 30일 이하: 재고 API의 salesCountMap 활용 (정확도 높음)
- * 30일 초과: 주문 API에서 직접 집계 (분할 호출)
- */
-async function fetchAccountSalesData(account: CoupangAccount) {
-  const config: CoupangConfig = {
-    vendorId: account.vendorId,
-    accessKey: account.accessKey,
-    secretKey: account.secretKey,
-  };
-
-  // 1) 재고 API에서 30일 판매량 + 상품 정보 가져오기
-  const inventoryMap = new Map<number, {
-    productName: string;
-    externalSkuId: string | null;
-    sales30dFromApi: number;
-  }>();
-
-  try {
-    let nextToken: string | undefined;
-    let pages = 0;
-
-    do {
-      const response = await getRocketGrowthInventory(config, config.vendorId, { nextToken });
-
-      for (const item of (response.data || [])) {
-        inventoryMap.set(item.vendorItemId, {
-          productName: '', // 주문 데이터에서 채울 예정
-          externalSkuId: item.externalSkuId || null,
-          sales30dFromApi: item.salesCountMap?.SALES_COUNT_LAST_THIRTY_DAYS || 0,
-        });
-      }
-
-      nextToken = response.nextToken;
-      pages++;
-      if (pages >= 50) break;
-      if (nextToken) await sleep(API_CALL_DELAY_MS);
-    } while (nextToken);
-
-    console.log(`[SalesSummary][${account.name}] 재고 항목: ${inventoryMap.size}개`);
-  } catch (error) {
-    console.error(`[SalesSummary][${account.name}] 재고 조회 실패:`, error);
-  }
-
-  // 2) 120일간의 주문 데이터 수집 (30일씩 분할)
-  const maxDays = SALES_PERIODS[SALES_PERIODS.length - 1]; // 120일
-  const dateRanges = splitDateRange(maxDays);
-
-  // vendorItemId → 일별 판매량 맵
-  const salesByItem = new Map<number, {
-    productName: string;
-    totalByPeriod: Record<string, number>; // 'dN' → 판매량
-  }>();
-
-  // 각 구간별 주문 수집
-  for (let i = 0; i < dateRanges.length; i++) {
-    const range = dateRanges[i];
-    console.log(`[SalesSummary][${account.name}] 주문 조회: ${range.from} ~ ${range.to} (${i + 1}/${dateRanges.length})`);
-
-    const orders = await fetchRocketOrdersForPeriod(
-      config,
-      account.vendorId,
-      range.from,
-      range.to
-    );
-
-    // 주문 아이템별 집계
-    for (const order of orders) {
-      for (const item of (order.orderItems || [])) {
-        const existing = salesByItem.get(item.vendorItemId);
-        if (existing) {
-          existing.productName = item.productName || existing.productName;
-        } else {
-          salesByItem.set(item.vendorItemId, {
-            productName: item.productName || '',
-            totalByPeriod: {},
-          });
-        }
-      }
-    }
-
-    // 기간별 합산: 이 구간이 어느 기간에 해당하는지 계산
-    const rangeStartDaysAgo = Math.ceil(
-      (Date.now() - new Date(range.from).getTime()) / (24 * 60 * 60 * 1000)
-    );
-
-    for (const order of orders) {
-      for (const item of (order.orderItems || [])) {
-        const entry = salesByItem.get(item.vendorItemId)!;
-        const qty = item.salesQuantity || 1;
-
-        // 주문 결제일이 각 기간에 포함되는지 확인
-        const paidDate = new Date(order.paidAt);
-        const daysAgo = Math.ceil((Date.now() - paidDate.getTime()) / (24 * 60 * 60 * 1000));
-
-        for (const period of SALES_PERIODS) {
-          const key = `d${period}`;
-          if (daysAgo <= period) {
-            entry.totalByPeriod[key] = (entry.totalByPeriod[key] || 0) + qty;
-          }
-        }
-      }
-    }
-
-    // 구간 간 Rate Limit 대응
-    if (i < dateRanges.length - 1) {
-      await sleep(API_CALL_DELAY_MS * 2);
-    }
-  }
-
-  // 3) 재고 API와 주문 데이터 병합
-  // 재고 API에 있지만 주문에는 없는 상품도 포함
-  for (const [vendorItemId, invData] of inventoryMap) {
-    if (!salesByItem.has(vendorItemId)) {
-      salesByItem.set(vendorItemId, {
-        productName: invData.productName,
-        totalByPeriod: {},
-      });
-    }
-  }
-
-  // 최종 결과 생성
-  const results: SalesSummaryItem[] = [];
-
-  for (const [vendorItemId, data] of salesByItem) {
-    const invData = inventoryMap.get(vendorItemId);
-
-    results.push({
-      vendorItemId,
-      productName: data.productName || invData?.productName || `Unknown (${vendorItemId})`,
-      sku: invData?.externalSkuId || null,
-      sales: {
-        d7: data.totalByPeriod['d7'] || 0,
-        d30: data.totalByPeriod['d30'] || invData?.sales30dFromApi || 0,
-        d60: data.totalByPeriod['d60'] || 0,
-        d90: data.totalByPeriod['d90'] || 0,
-        d120: data.totalByPeriod['d120'] || 0,
-      },
-      source: 'coupang_rocket',
-      accountName: account.name,
-    });
-  }
-
-  return results;
+  return _supabase;
 }
 
 // ============================================================================
@@ -466,134 +49,242 @@ interface SalesSummaryItem {
     d7: number;
     d30: number;
     d60: number;
-    d90: number;
     d120: number;
   };
   source: string;
-  accountName?: string;
+}
+
+type PeriodKey = 'd7' | 'd30' | 'd60' | 'd120';
+
+const PERIODS: { key: PeriodKey; days: number }[] = [
+  { key: 'd7', days: 7 },
+  { key: 'd30', days: 30 },
+  { key: 'd60', days: 60 },
+  { key: 'd120', days: 120 },
+];
+
+/**
+ * N일 전 날짜를 ISO 문자열로 반환
+ */
+function daysAgoISO(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
+}
+
+// ============================================================================
+// 판매자배송: coupang_orders + coupang_order_items
+// ============================================================================
+
+async function fetchSellerSales(): Promise<SalesSummaryItem[]> {
+  const supabase = getSupabase();
+  const cutoff = daysAgoISO(120);
+
+  // 1) 120일 이내 주문 ID + ordered_at 조회
+  const { data: orders, error: orderErr } = await supabase
+    .from('coupang_orders')
+    .select('id, ordered_at')
+    .gte('ordered_at', cutoff);
+
+  if (orderErr) {
+    console.error('[SalesSummary] 판매자배송 주문 조회 실패:', orderErr.message);
+    return [];
+  }
+  if (!orders || orders.length === 0) return [];
+
+  // ordered_at 룩업 맵
+  const orderDateMap = new Map<string, string>();
+  for (const o of orders) {
+    orderDateMap.set(o.id, o.ordered_at);
+  }
+
+  // 2) 해당 주문들의 아이템 조회 (500건씩 chunk)
+  const orderIds = orders.map((o: { id: string }) => o.id);
+  const CHUNK = 500;
+  const allItems: Array<{
+    vendor_item_id: number;
+    vendor_item_name: string;
+    shipping_count: number;
+    external_vendor_sku_code: string | null;
+    coupang_order_id: string;
+  }> = [];
+
+  for (let i = 0; i < orderIds.length; i += CHUNK) {
+    const chunk = orderIds.slice(i, i + CHUNK);
+    const { data: items, error: itemErr } = await supabase
+      .from('coupang_order_items')
+      .select('vendor_item_id, vendor_item_name, shipping_count, external_vendor_sku_code, coupang_order_id')
+      .in('coupang_order_id', chunk);
+
+    if (itemErr) {
+      console.error('[SalesSummary] 판매자배송 아이템 조회 실패:', itemErr.message);
+      continue;
+    }
+    if (items) allItems.push(...items);
+  }
+
+  if (allItems.length === 0) return [];
+
+  // vendor_item_id별 기간별 집계
+  const map = new Map<
+    number,
+    { name: string; sku: string | null; sales: Record<PeriodKey, number> }
+  >();
+
+  const now = Date.now();
+
+  for (const row of allItems) {
+    const vid = row.vendor_item_id;
+    const orderedAt = orderDateMap.get(row.coupang_order_id);
+    if (!orderedAt) continue;
+
+    const daysAgo = (now - new Date(orderedAt).getTime()) / 86_400_000;
+    const qty = row.shipping_count ?? 0;
+
+    if (!map.has(vid)) {
+      map.set(vid, {
+        name: row.vendor_item_name ?? '',
+        sku: row.external_vendor_sku_code ?? null,
+        sales: { d7: 0, d30: 0, d60: 0, d120: 0 },
+      });
+    }
+
+    const entry = map.get(vid)!;
+    if (row.vendor_item_name) entry.name = row.vendor_item_name;
+    if (row.external_vendor_sku_code) entry.sku = row.external_vendor_sku_code;
+
+    for (const { key, days } of PERIODS) {
+      if (daysAgo <= days) {
+        entry.sales[key] += qty;
+      }
+    }
+  }
+
+  const results: SalesSummaryItem[] = [];
+  for (const [vid, entry] of map) {
+    results.push({
+      vendorItemId: vid,
+      productName: entry.name || `판매자배송 상품 (${vid})`,
+      sku: entry.sku,
+      sales: entry.sales,
+      source: 'coupang_seller',
+    });
+  }
+
+  console.log(`[SalesSummary] 판매자배송: ${results.length}개 상품, 원본 ${allItems.length}건`);
+  return results;
+}
+
+// ============================================================================
+// 로켓그로스: coupang_revenues
+// ============================================================================
+
+async function fetchRocketSales(): Promise<SalesSummaryItem[]> {
+  const supabase = getSupabase();
+  const cutoff120 = daysAgoISO(120).split('T')[0]; // YYYY-MM-DD
+
+  // coupang_revenues: items는 JSONB 배열, sale_date는 YYYY-MM-DD 문자열
+  const { data, error } = await supabase
+    .from('coupang_revenues')
+    .select('items, sale_date')
+    .gte('sale_date', cutoff120);
+
+  if (error) {
+    console.error('[SalesSummary] 로켓그로스 조회 실패:', error.message);
+    return [];
+  }
+  if (!data || data.length === 0) return [];
+
+  // vendor_item_id별 기간별 집계
+  const map = new Map<
+    number,
+    { name: string; sales: Record<PeriodKey, number> }
+  >();
+
+  const now = Date.now();
+  let rawCount = 0;
+
+  for (const row of data) {
+    if (!row.sale_date || !row.items) continue;
+
+    const saleDate = new Date(row.sale_date + 'T00:00:00Z');
+    const daysAgo = (now - saleDate.getTime()) / 86_400_000;
+
+    // items: JSONB 배열 [{vendorItemId, productName, quantity, ...}, ...]
+    const items = Array.isArray(row.items) ? row.items : [];
+
+    for (const item of items) {
+      const vid = Number(item.vendorItemId);
+      if (!vid) continue;
+
+      const qty = item.quantity ?? 0;
+      rawCount++;
+
+      if (!map.has(vid)) {
+        map.set(vid, {
+          name: item.productName ?? '',
+          sales: { d7: 0, d30: 0, d60: 0, d120: 0 },
+        });
+      }
+
+      const entry = map.get(vid)!;
+      if (item.productName) entry.name = item.productName;
+
+      for (const { key, days } of PERIODS) {
+        if (daysAgo <= days) {
+          entry.sales[key] += qty;
+        }
+      }
+    }
+  }
+
+  const results: SalesSummaryItem[] = [];
+  for (const [vid, entry] of map) {
+    results.push({
+      vendorItemId: vid,
+      productName: entry.name || `로켓그로스 상품 (${vid})`,
+      sku: null,
+      sales: entry.sales,
+      source: 'coupang_rocket',
+    });
+  }
+
+  console.log(`[SalesSummary] 로켓그로스: ${results.length}개 상품, 원본 ${rawCount}건`);
+  return results;
 }
 
 // ============================================================================
 // API Route Handler
 // ============================================================================
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const accountId = searchParams.get('accountId');
-
-    // 쿠팡 계정 조회
-    const allAccounts = getCoupangAccounts();
-    if (allAccounts.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No Coupang accounts configured' },
-        { status: 500 }
-      );
-    }
-
-    // 특정 계정 필터링
-    const accounts = accountId
-      ? allAccounts.filter(a => a.id === accountId)
-      : allAccounts;
-
-    if (accounts.length === 0) {
-      return NextResponse.json(
-        { success: false, error: `Account not found: ${accountId}` },
-        { status: 404 }
-      );
-    }
-
-    console.log(`[SalesSummary] 집계 시작: ${accounts.map(a => a.name).join(', ')}`);
     const startTime = Date.now();
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 1. 쿠팡 로켓그로스 판매량 수집
-    // ─────────────────────────────────────────────────────────────────────
-    const coupangRocketResults = await Promise.all(
-      accounts.map(account => fetchAccountSalesData(account))
-    );
+    // 병렬로 두 소스 조회
+    const [sellerItems, rocketItems] = await Promise.all([
+      fetchSellerSales(),
+      fetchRocketSales(),
+    ]);
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 1-2. 쿠팡 판매자배송 판매량 수집
-    // ─────────────────────────────────────────────────────────────────────
-    let coupangSellerResults: SalesSummaryItem[][] = [];
-    try {
-      coupangSellerResults = await Promise.all(
-        accounts.map(account => fetchSellerSalesData(account))
-      );
-    } catch (error) {
-      console.error('[SalesSummary] 판매자배송 수집 실패 (무시):', error);
-    }
+    // TODO: 네이버 스마트스토어 판매량 추가
+    // const naverItems = await fetchNaverSales();
 
-    const allItems: SalesSummaryItem[] = [
-      ...coupangRocketResults.flat(),
-      ...coupangSellerResults.flat(),
-    ];
+    const allItems = [...sellerItems, ...rocketItems];
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 2. 네이버 커머스 판매량 수집 (환경변수 있을 때만)
-    // ─────────────────────────────────────────────────────────────────────
-    let naverItems: SalesSummaryItem[] = [];
-
-    if (isNaverCommerceAvailable()) {
-      console.log('[SalesSummary] 네이버 커머스 판매량 수집 시작');
-
-      try {
-        for (const period of SALES_PERIODS) {
-          const dateFrom = getDateDaysAgo(period);
-          const dateTo = getToday();
-          const naverSales = await getNaverSalesSummary(dateFrom, dateTo);
-
-          for (const sale of naverSales) {
-            // 기존 네이버 아이템 찾기 또는 생성
-            let existing = naverItems.find(item => item.productName === sale.productName);
-            if (!existing) {
-              existing = {
-                vendorItemId: 0, // 네이버는 vendorItemId 없음
-                productName: sale.productName,
-                sku: null,
-                sales: { d7: 0, d30: 0, d60: 0, d90: 0, d120: 0 },
-                source: 'naver',
-              };
-              naverItems.push(existing);
-            }
-
-            const key = `d${period}` as keyof typeof existing.sales;
-            existing.sales[key] = sale.salesQuantity;
-          }
-        }
-        console.log(`[SalesSummary] 네이버 상품: ${naverItems.length}개`);
-      } catch (error) {
-        console.error('[SalesSummary] 네이버 판매량 수집 실패:', error);
-        // 에러시 무시하고 쿠팡 데이터만 반환
-      }
-    } else {
-      console.log('[SalesSummary] 네이버 커머스 API 미설정 - skip');
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // 3. 결과 병합 및 정렬
-    // ─────────────────────────────────────────────────────────────────────
-    const mergedItems = [...allItems, ...naverItems];
-
-    // 30일 판매량 기준 내림차순 정렬
-    mergedItems.sort((a, b) => b.sales.d30 - a.sales.d30);
+    // d30 기준 내림차순 정렬
+    allItems.sort((a, b) => b.sales.d30 - a.sales.d30);
 
     const elapsed = Date.now() - startTime;
-    console.log(`[SalesSummary] 집계 완료: ${mergedItems.length}개 상품, ${elapsed}ms`);
+    console.log(`[SalesSummary] 집계 완료: ${allItems.length}개 상품, ${elapsed}ms`);
 
     return NextResponse.json({
       success: true,
-      data: mergedItems,
-      total: mergedItems.length,
-      accounts: accounts.map(a => a.name),
+      data: allItems,
       sources: {
-        coupang_rocket: coupangRocketResults.flat().length,
-        coupang_seller: coupangSellerResults.flat().length,
-        naver: naverItems.length,
+        coupang_rocket: rocketItems.length,
+        coupang_seller: sellerItems.length,
       },
-      naverEnabled: isNaverCommerceAvailable(),
-      periods: SALES_PERIODS,
       updatedAt: new Date().toISOString(),
       elapsedMs: elapsed,
     });
@@ -604,7 +295,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
