@@ -232,8 +232,8 @@ export async function GET(request: NextRequest) {
       return undefined;
     };
 
-    const now = getKSTDate(0);
-    const date120dAgo = getKSTDate(120);
+    const now = getKSTDate(1); // 어제 기준 (당일 데이터 미반영 대응)
+    const date120dAgo = getKSTDate(121); // 어제 기준 120일 전
     const salesByProduct = new Map<string, SalesBucket>();
     const salesBySource = new Map<string, Record<SourceKey, SalesBucket>>();
 
