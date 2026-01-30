@@ -274,82 +274,91 @@ export default function ForecastPage() {
         </div>
       )}
 
-      {/* 상품 리스트 */}
+      {/* 테이블 */}
       {!loading && data && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 divide-y divide-slate-100">
-          {filteredItems.length === 0 ? (
-            <div className="px-4 py-12 text-center text-slate-400">
-              {search ? '검색 결과가 없습니다' : '데이터가 없습니다'}
-            </div>
-          ) : (
-            filteredItems.map(item => {
-              const isItemExpanded = expandedItems.has(item.product_id);
-              return (
-                <div key={item.product_id} className={item.stockout_risk ? 'bg-red-50/50' : ''}>
-                  {/* 상품 행 */}
-                  <button
-                    type="button"
-                    onClick={() => toggleItem(item.product_id)}
-                    className={`w-full px-4 py-3 flex items-start gap-2 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors ${isItemExpanded ? 'bg-slate-50' : ''}`}
-                    aria-expanded={isItemExpanded}
-                  >
-                    <span className={`inline-block transition-transform text-xs mt-0.5 shrink-0 text-slate-400 ${isItemExpanded ? 'rotate-90' : ''}`}>
-                      ▶
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-slate-900">{item.name}</div>
-                      <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
-                        <span>재고 <strong className="text-slate-700">{item.total_qty}</strong></span>
-                        <span>7일 <strong className="text-slate-700">{item.sales_7d}</strong></span>
-                        <span>30일 <strong className="text-slate-700">{item.sales_30d}</strong></span>
-                        {item.stockout_risk && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-bold">위험</span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* 펼침: 상세 정보 카드 */}
-                  {isItemExpanded && (
-                    <div className="px-4 pb-4 pt-1">
-                      <div className="ml-5 bg-slate-50 rounded-lg p-3 space-y-3 text-sm">
-                        {/* 재고 */}
-                        <div>
-                          <div className="font-medium text-slate-600 mb-1.5">📦 재고</div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="flex justify-between"><span className="text-slate-500">총수량</span><span className="font-semibold">{formatNumber(item.total_qty)}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">창고</span><span className="font-medium">{formatNumber(item.warehouse_qty)}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">쿠팡</span><span className="font-medium">{formatNumber(item.coupang_qty)}</span></div>
-                          </div>
-                        </div>
-                        {/* 판매량 */}
-                        <div>
-                          <div className="font-medium text-slate-600 mb-1.5">📊 판매량</div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="flex justify-between"><span className="text-slate-500">7일</span><span>{formatNumber(item.sales_7d)}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">30일</span><span>{formatNumber(item.sales_30d)}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">60일</span><span className="font-medium">{formatNumber(item.sales_60d)}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">90일</span><span>{formatNumber(item.sales_90d)}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">120일</span><span>{formatNumber(item.sales_120d)}</span></div>
-                          </div>
-                        </div>
-                        {/* 필요 재고 */}
-                        <div>
-                          <div className="font-medium text-slate-600 mb-1.5">🔔 필요 재고</div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex justify-between"><span className="text-slate-500">60일</span>{formatNumber(item.need_60d, true)}</div>
-                            <div className="flex justify-between"><span className="text-slate-500">90일</span>{formatNumber(item.need_90d, true)}</div>
-                            <div className="flex justify-between"><span className="text-slate-500">120일</span>{formatNumber(item.need_120d, true)}</div>
-                            <div className="flex justify-between"><span className="text-slate-500">쿠팡40일</span>{formatNumber(item.coupang_need_40d, true)}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-clip">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600 whitespace-nowrap">상품명</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-blue-50">총수량</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">7일</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">30일</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-yellow-50">60일</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">90일</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">120일</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">60일필요</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">90일필요</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">120일필요</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-green-50">쿠팡40일</th>
+                  <th className="px-4 py-3 text-center font-semibold text-slate-600 whitespace-nowrap">위험</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredItems.map(item => {
+                  const isItemExpanded = expandedItems.has(item.product_id);
+                  return (
+                    <Fragment key={item.product_id}>
+                      <tr className={`transition-colors ${item.stockout_risk ? 'bg-red-50/50' : ''} ${isItemExpanded ? 'bg-blue-50/30' : ''}`}>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => toggleItem(item.product_id)}
+                            className="flex items-center gap-1.5 text-left hover:opacity-80 active:opacity-60"
+                            aria-expanded={isItemExpanded}
+                          >
+                            <span className={`inline-block transition-transform text-[10px] shrink-0 text-slate-400 ${isItemExpanded ? 'rotate-90' : ''}`}>
+                              ▶
+                            </span>
+                            <span className="font-medium text-slate-900">{item.name}</span>
+                            {item.stockout_risk && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-bold ml-1">위험</span>
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-slate-900 bg-blue-50/50">{formatNumber(item.total_qty)}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_7d)}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_30d)}</td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-700 bg-yellow-50/50">{formatNumber(item.sales_60d)}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_90d)}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_120d)}</td>
+                        <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_60d, true)}</td>
+                        <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_90d, true)}</td>
+                        <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_120d, true)}</td>
+                        <td className="px-4 py-3 text-right bg-green-50/50">{formatNumber(item.coupang_need_40d, true)}</td>
+                        <td className="px-4 py-3 text-center">
+                          {item.stockout_risk && (
+                            <span className="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-600 rounded-full font-bold text-xs">O</span>
+                          )}
+                        </td>
+                      </tr>
+                      {/* 펼침: 상세 (창고/쿠팡 분리 등) */}
+                      {isItemExpanded && (
+                        <tr className="bg-slate-50/80">
+                          <td colSpan={12} className="px-4 py-3">
+                            <div className="ml-5 flex flex-wrap gap-4 text-sm">
+                              <div><span className="text-slate-500">창고</span> <span className="font-medium">{formatNumber(item.warehouse_qty)}</span></div>
+                              <div><span className="text-slate-500">쿠팡</span> <span className="font-medium">{formatNumber(item.coupang_qty)}</span></div>
+                              <div><span className="text-slate-500">SKU</span> <span className="font-medium">{item.sku || '-'}</span></div>
+                              <div><span className="text-slate-500">카테고리</span> <span className="font-medium">{item.category || '-'}</span></div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+                {filteredItems.length === 0 && (
+                  <tr>
+                    <td colSpan={12} className="px-4 py-12 text-center text-slate-400">
+                      {search ? '검색 결과가 없습니다' : '데이터가 없습니다'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
