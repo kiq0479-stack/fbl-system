@@ -5,11 +5,12 @@ import SellerDeliveryTable from '@/components/coupang/SellerDeliveryTable';
 import RevenueTable from '@/components/coupang/RevenueTable';
 import RocketGrowthOrderTable from '@/components/coupang/RocketGrowthOrderTable';
 import StockSummaryTable from '@/components/coupang/StockSummaryTable';
+import SalesSummaryTable from '@/components/coupang/SalesSummaryTable';
 
-type CoupangTab = 'stock' | 'rocket' | 'revenue' | 'seller';
+type CoupangTab = 'sales' | 'stock' | 'rocket' | 'revenue' | 'seller';
 
 export default function CoupangPage() {
-  const [activeTab, setActiveTab] = useState<CoupangTab>('stock');
+  const [activeTab, setActiveTab] = useState<CoupangTab>('sales');
   
   // 오늘 날짜
   const today = new Date().toISOString().split('T')[0];
@@ -56,7 +57,7 @@ export default function CoupangPage() {
           <p className="text-sm text-slate-500 mt-1">쿠팡 주문 및 매출 현황을 조회합니다.</p>
         </div>
         
-        {activeTab !== 'stock' && (
+        {activeTab !== 'stock' && activeTab !== 'sales' && (
           <div className="flex items-center gap-3">
             <input
               type="date"
@@ -109,6 +110,22 @@ export default function CoupangPage() {
       {/* 탭 UI */}
       <div className="border-b border-slate-200">
         <nav className="flex gap-4">
+          <button
+            onClick={() => setActiveTab('sales')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'sales'
+                ? 'border-rose-500 text-rose-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+            title="전체 채널 판매량 통합 조회 (쿠팡 로켓 + 판매자 + 네이버)"
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+              </svg>
+              판매량
+            </span>
+          </button>
           <button
             onClick={() => setActiveTab('stock')}
             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
@@ -181,7 +198,9 @@ export default function CoupangPage() {
       </div>
 
       {/* 테이블 */}
-      {activeTab === 'stock' ? (
+      {activeTab === 'sales' ? (
+        <SalesSummaryTable />
+      ) : activeTab === 'stock' ? (
         <StockSummaryTable />
       ) : activeTab === 'rocket' ? (
         <RocketGrowthOrderTable 
