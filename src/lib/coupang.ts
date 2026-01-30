@@ -397,9 +397,10 @@ export async function getOrders(
     createdAtTo?: string;
     status?: string;
     maxPerPage?: number;
+    nextToken?: string;
   }
 ) {
-  const { vendorId, createdAtFrom, createdAtTo, status, maxPerPage = 50 } = options;
+  const { vendorId, createdAtFrom, createdAtTo, status, maxPerPage = 50, nextToken } = options;
   
   let path = `/v2/providers/openapi/apis/api/v4/vendors/${vendorId}/ordersheets`;
   
@@ -408,6 +409,7 @@ export async function getOrders(
   if (createdAtTo) params.append('createdAtTo', createdAtTo);
   if (status) params.append('status', status);
   params.append('maxPerPage', maxPerPage.toString());
+  if (nextToken) params.append('nextToken', nextToken);
   
   const queryString = params.toString();
   if (queryString) {

@@ -20,6 +20,7 @@ export type SyncStatus = 'success' | 'failed'
 export type SupplierType = 'YOUBEICHEN' | 'QUYATIMEBABY' | 'OTHER'
 export type CoupangOrderStatus = 'ACCEPT' | 'INSTRUCT' | 'DEPARTURE' | 'DELIVERING' | 'FINAL_DELIVERY'
 export type InboundStatus = 'pending' | 'in_transit' | 'arrived' | 'completed' | 'cancelled'
+export type Marketplace = 'naver' | 'coupang' | 'auction' | 'gmarket' | 'selfmall'
 
 export interface Database {
   public: {
@@ -186,6 +187,7 @@ export interface Database {
           change_type: InventoryChangeType
           change_qty: number
           reason: string | null
+          reference_type: string | null
           reference_id: string | null
           created_by: string | null
           created_at: string
@@ -196,6 +198,7 @@ export interface Database {
           change_type: InventoryChangeType
           change_qty: number
           reason?: string | null
+          reference_type?: string | null
           reference_id?: string | null
           created_by?: string | null
           created_at?: string
@@ -206,6 +209,7 @@ export interface Database {
           change_type?: InventoryChangeType
           change_qty?: number
           reason?: string | null
+          reference_type?: string | null
           reference_id?: string | null
           created_by?: string | null
           created_at?: string
@@ -641,6 +645,94 @@ export interface Database {
           updated_at?: string
         }
       }
+      product_mappings: {
+        Row: {
+          id: string
+          product_id: string
+          marketplace: Marketplace
+          external_product_id: string | null
+          external_product_name: string | null
+          external_option_id: string | null
+          external_option_name: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          marketplace: Marketplace
+          external_product_id?: string | null
+          external_product_name?: string | null
+          external_option_id?: string | null
+          external_option_name?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          marketplace?: Marketplace
+          external_product_id?: string | null
+          external_product_name?: string | null
+          external_option_id?: string | null
+          external_option_name?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      inventory_sync_logs: {
+        Row: {
+          id: string
+          marketplace: Marketplace
+          sync_type: 'auto' | 'manual'
+          sync_date: string
+          orders_count: number
+          synced_count: number
+          skipped_count: number
+          failed_count: number
+          total_qty_changed: number
+          status: SyncStatus
+          error_message: string | null
+          details: Json | null
+          started_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          marketplace: Marketplace
+          sync_type: 'auto' | 'manual'
+          sync_date: string
+          orders_count?: number
+          synced_count?: number
+          skipped_count?: number
+          failed_count?: number
+          total_qty_changed?: number
+          status?: SyncStatus
+          error_message?: string | null
+          details?: Json | null
+          started_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          marketplace?: Marketplace
+          sync_type?: 'auto' | 'manual'
+          sync_date?: string
+          orders_count?: number
+          synced_count?: number
+          skipped_count?: number
+          failed_count?: number
+          total_qty_changed?: number
+          status?: SyncStatus
+          error_message?: string | null
+          details?: Json | null
+          started_at?: string
+          completed_at?: string | null
+        }
+      }
       coupang_revenues: {
         Row: {
           id: string
@@ -714,6 +806,7 @@ export interface Database {
       supplier_type: SupplierType
       coupang_order_status: CoupangOrderStatus
       inbound_status: InboundStatus
+      marketplace: Marketplace
     }
   }
 }

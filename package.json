@@ -11,6 +11,8 @@
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.91.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
     "docx": "^9.5.1",
     "https-proxy-agent": "^7.0.6",
     "mammoth": "^1.11.0",
