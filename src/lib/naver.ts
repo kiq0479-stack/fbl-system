@@ -307,8 +307,36 @@ export function getNaverAccounts(): NaverAccount[] {
   }
   
   // ─────────────────────────────────────────────────────────────────────────
-  // 계정 2, 3, 4... (필요시 위와 같은 패턴으로 추가)
+  // 계정 2: 메오메오.
   // ─────────────────────────────────────────────────────────────────────────
+  const clientId2 = process.env.NAVER_CLIENT_ID2;
+  const clientSecret2 = process.env.NAVER_CLIENT_SECRET2;
+  
+  if (clientId2 && clientSecret2) {
+    accounts.push({
+      id: '2',
+      name: '메오메오.',
+      storeName: '메오메오.',
+      clientId: clientId2,
+      clientSecret: clientSecret2,
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 계정 3: 쉴트코리아
+  // ─────────────────────────────────────────────────────────────────────────
+  const clientId3 = process.env.NAVER_CLIENT_ID3;
+  const clientSecret3 = process.env.NAVER_CLIENT_SECRET3;
+  
+  if (clientId3 && clientSecret3) {
+    accounts.push({
+      id: '3',
+      name: '쉴트코리아',
+      storeName: '쉴트코리아',
+      clientId: clientId3,
+      clientSecret: clientSecret3,
+    });
+  }
   
   return accounts;
 }
