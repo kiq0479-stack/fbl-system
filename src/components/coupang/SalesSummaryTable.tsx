@@ -14,52 +14,31 @@ interface SalesSummaryItem {
     d7: number;
     d30: number;
     d60: number;
-    d90: number;
     d120: number;
   };
   source: string;
-  accountName?: string;
 }
 
 interface GroupedProduct {
-  /** 그룹 키 (vendorItemId 또는 productName) */
   key: string;
   productName: string;
   sku: string | null;
-  /** 소스별 합산 판매량 */
-  totalSales: { d7: number; d30: number; d60: number; d90: number; d120: number };
-  /** 소스별 상세 내역 */
-  sources: SalesSummaryItem[];
+  totalSales: { d7: number; d30: number; d60: number; d120: number };
+  /** 소스별 판매량 (항상 3개 소스 포함) */
+  bySource: Record<string, { d7: number; d30: number; d60: number; d120: number }>;
 }
 
 // ============================================================================
-// 소스 라벨/색상
+// 소스 설정 (항상 이 순서로 표시)
 // ============================================================================
 
-const SOURCE_LABELS: Record<string, { label: string; emoji: string; color: string; bg: string }> = {
-  coupang_rocket: {
-    label: '쿠팡 로켓그로스',
-    emoji: '🚀',
-    color: 'text-purple-700',
-    bg: 'bg-purple-50',
-  },
-  coupang_seller: {
-    label: '쿠팡 판매자배송',
-    emoji: '📦',
-    color: 'text-blue-700',
-    bg: 'bg-blue-50',
-  },
-  naver: {
-    label: '네이버 스마트스토어',
-    emoji: '🟢',
-    color: 'text-green-700',
-    bg: 'bg-green-50',
-  },
-};
+const ALL_SOURCES = [
+  { key: 'naver', label: '네이버 스토어', emoji: '🟢', color: 'text-green-700', bg: 'bg-green-50' },
+  { key: 'coupang_seller', label: '쿠팡 판매자', emoji: '📦', color: 'text-blue-700', bg: 'bg-blue-50' },
+  { key: 'coupang_rocket', label: '쿠팡 로켓그로스', emoji: '🚀', color: 'text-purple-700', bg: 'bg-purple-50' },
+];
 
-function getSourceInfo(source: string) {
-  return SOURCE_LABELS[source] || { label: source, emoji: '❓', color: 'text-slate-700', bg: 'bg-slate-50' };
-}
+const ZERO_SALES = { d7: 0, d30: 0, d60: 0, d120: 0 };
 
 // ============================================================================
 // 컴포넌트
@@ -72,7 +51,6 @@ export default function SalesSummaryTable() {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [sourcesInfo, setSourcesInfo] = useState<Record<string, number>>({});
 
-  // 데이터 로드
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
@@ -86,7 +64,7 @@ export default function SalesSummaryTable() {
         } else {
           setError(json.error || '데이터 조회 실패');
         }
-      } catch (err) {
+      } catch {
         setError('네트워크 오류');
       }
       setLoading(false);
@@ -94,12 +72,11 @@ export default function SalesSummaryTable() {
     fetchData();
   }, []);
 
-  // 상품 그룹핑: 같은 vendorItemId 또는 productName으로 묶기
+  // 상품 그룹핑
   const grouped = useMemo(() => {
     const map = new Map<string, GroupedProduct>();
 
     for (const item of data) {
-      // 키: vendorItemId > 0이면 vendorItemId 기준, 아니면 productName 기준
       const key = item.vendorItemId > 0
         ? `vid:${item.vendorItemId}`
         : `name:${item.productName}`;
@@ -109,53 +86,45 @@ export default function SalesSummaryTable() {
           key,
           productName: item.productName,
           sku: item.sku,
-          totalSales: { d7: 0, d30: 0, d60: 0, d90: 0, d120: 0 },
-          sources: [],
+          totalSales: { d7: 0, d30: 0, d60: 0, d120: 0 },
+          bySource: {},
         });
       }
 
       const group = map.get(key)!;
-      // 상품명: 더 긴 이름 우선
       if (item.productName.length > group.productName.length) {
         group.productName = item.productName;
       }
-      if (item.sku && !group.sku) {
-        group.sku = item.sku;
-      }
-      // 소스별 판매량 합산
+      if (item.sku && !group.sku) group.sku = item.sku;
+
+      // 총합
       group.totalSales.d7 += item.sales.d7;
       group.totalSales.d30 += item.sales.d30;
       group.totalSales.d60 += item.sales.d60;
-      group.totalSales.d90 += item.sales.d90;
       group.totalSales.d120 += item.sales.d120;
-      group.sources.push(item);
+
+      // 소스별 합산
+      const src = item.source;
+      if (!group.bySource[src]) {
+        group.bySource[src] = { d7: 0, d30: 0, d60: 0, d120: 0 };
+      }
+      group.bySource[src].d7 += item.sales.d7;
+      group.bySource[src].d30 += item.sales.d30;
+      group.bySource[src].d60 += item.sales.d60;
+      group.bySource[src].d120 += item.sales.d120;
     }
 
-    // d30 기준 내림차순 정렬
     return Array.from(map.values()).sort((a, b) => b.totalSales.d30 - a.totalSales.d30);
   }, [data]);
 
-  // 토글
   const toggleExpand = (key: string) => {
     setExpandedKeys(prev => {
       const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
-
-  // 추세 표시
-  function getTrend(d7: number, d30: number): { icon: string; color: string } {
-    if (d30 === 0) return { icon: '—', color: 'text-slate-400' };
-    const weeklyAvg = d30 / 4.3; // 30일 주간 평균
-    if (d7 > weeklyAvg * 1.3) return { icon: '📈', color: 'text-green-600' };
-    if (d7 < weeklyAvg * 0.7) return { icon: '📉', color: 'text-red-600' };
-    return { icon: '➡️', color: 'text-slate-600' };
-  }
 
   // ─── 로딩/에러 ───
   if (loading) {
@@ -178,7 +147,6 @@ export default function SalesSummaryTable() {
     );
   }
 
-  // ─── 메인 렌더 ───
   return (
     <div className="space-y-4">
       {/* 요약 카드 */}
@@ -187,15 +155,12 @@ export default function SalesSummaryTable() {
           <p className="text-sm text-slate-500">총 상품 수</p>
           <p className="text-2xl font-bold text-slate-900">{grouped.length}</p>
         </div>
-        {Object.entries(sourcesInfo).map(([source, count]) => {
-          const info = getSourceInfo(source);
-          return (
-            <div key={source} className={`${info.bg} border border-slate-200 rounded-lg p-4`}>
-              <p className={`text-sm ${info.color}`}>{info.emoji} {info.label}</p>
-              <p className="text-2xl font-bold text-slate-900">{count}개</p>
-            </div>
-          );
-        })}
+        {ALL_SOURCES.map(src => (
+          <div key={src.key} className={`${src.bg} border border-slate-200 rounded-lg p-4`}>
+            <p className={`text-sm ${src.color}`}>{src.emoji} {src.label}</p>
+            <p className="text-2xl font-bold text-slate-900">{sourcesInfo[src.key] || 0}개</p>
+          </div>
+        ))}
       </div>
 
       {/* 테이블 */}
@@ -209,36 +174,28 @@ export default function SalesSummaryTable() {
               <th className="text-right px-4 py-3 font-medium text-slate-600 whitespace-nowrap">30일</th>
               <th className="text-right px-4 py-3 font-medium text-slate-600 whitespace-nowrap">60일</th>
               <th className="text-right px-4 py-3 font-medium text-slate-600 whitespace-nowrap">120일</th>
-              <th className="text-center px-4 py-3 font-medium text-slate-600 whitespace-nowrap">추세</th>
-              <th className="text-center px-4 py-3 font-medium text-slate-600 whitespace-nowrap">소스</th>
             </tr>
           </thead>
           <tbody>
             {grouped.map((group) => {
               const isExpanded = expandedKeys.has(group.key);
-              const trend = getTrend(group.totalSales.d7, group.totalSales.d30);
-              const hasMultipleSources = group.sources.length > 1;
 
               return (
                 <Fragment key={group.key}>
-                  {/* 메인 행 */}
+                  {/* 메인 행 — 항상 클릭 가능 */}
                   <tr
-                    className={`border-b border-slate-100 transition-colors ${
-                      hasMultipleSources ? 'cursor-pointer hover:bg-slate-50' : ''
-                    } ${isExpanded ? 'bg-slate-50' : ''}`}
-                    onClick={() => hasMultipleSources && toggleExpand(group.key)}
+                    className={`border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors ${
+                      isExpanded ? 'bg-slate-50' : ''
+                    }`}
+                    onClick={() => toggleExpand(group.key)}
                   >
                     <td className="px-4 py-3 text-center">
-                      {hasMultipleSources && (
-                        <span className={`inline-block transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-                          ▶
-                        </span>
-                      )}
+                      <span className={`inline-block transition-transform text-xs ${isExpanded ? 'rotate-90' : ''}`}>
+                        ▶
+                      </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-slate-900">
-                        {group.productName}
-                      </div>
+                      <div className="font-medium text-slate-900">{group.productName}</div>
                       {group.sku && (
                         <div className="text-xs text-slate-400 mt-0.5">SKU: {group.sku}</div>
                       )}
@@ -247,47 +204,26 @@ export default function SalesSummaryTable() {
                     <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900">{group.totalSales.d30.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right font-mono text-slate-700">{group.totalSales.d60.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right font-mono text-slate-700">{group.totalSales.d120.toLocaleString()}</td>
-                    <td className={`px-4 py-3 text-center ${trend.color}`}>{trend.icon}</td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {group.sources.map((s, i) => (
-                          <span
-                            key={i}
-                            title={`${getSourceInfo(s.source).label}${s.accountName ? ` (${s.accountName})` : ''}`}
-                          >
-                            {getSourceInfo(s.source).emoji}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
                   </tr>
 
-                  {/* 확장 행: 소스별 상세 */}
-                  {isExpanded && group.sources.map((source, idx) => {
-                    const info = getSourceInfo(source.source);
+                  {/* 펼침: 항상 3개 소스 행 표시 */}
+                  {isExpanded && ALL_SOURCES.map((src) => {
+                    const sales = group.bySource[src.key] || ZERO_SALES;
                     return (
                       <tr
-                        key={`${group.key}-${idx}`}
-                        className={`${info.bg} border-b border-slate-100`}
+                        key={`${group.key}-${src.key}`}
+                        className={`${src.bg} border-b border-slate-100`}
                       >
                         <td className="px-4 py-2"></td>
                         <td className="px-4 py-2">
-                          <div className="flex items-center gap-2 pl-4">
-                            <span>{info.emoji}</span>
-                            <span className={`text-sm font-medium ${info.color}`}>
-                              {info.label}
-                            </span>
-                            {source.accountName && (
-                              <span className="text-xs text-slate-400">({source.accountName})</span>
-                            )}
-                          </div>
+                          <span className="pl-4 text-sm">
+                            {src.emoji} {src.label}
+                          </span>
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-slate-600">{source.sales.d7.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right font-mono font-medium text-slate-700">{source.sales.d30.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right font-mono text-slate-600">{source.sales.d60.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right font-mono text-slate-600">{source.sales.d120.toLocaleString()}</td>
-                        <td className="px-4 py-2"></td>
-                        <td className="px-4 py-2"></td>
+                        <td className="px-4 py-2 text-right font-mono text-slate-600">{sales.d7.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right font-mono font-medium text-slate-700">{sales.d30.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right font-mono text-slate-600">{sales.d60.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right font-mono text-slate-600">{sales.d120.toLocaleString()}</td>
                       </tr>
                     );
                   })}
