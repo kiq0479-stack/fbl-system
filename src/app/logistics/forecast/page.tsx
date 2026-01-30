@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 
 interface ForecastItem {
   product_id: string;
@@ -43,6 +43,16 @@ export default function ForecastPage() {
   const [category, setCategory] = useState<string>('all');
   const [onlyRisk, setOnlyRisk] = useState(false);
   const [search, setSearch] = useState('');
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+
+  const toggleCategory = (cat: string) => {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
 
   const fetchForecast = async () => {
     setLoading(true);
@@ -287,48 +297,61 @@ export default function ForecastPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {Object.entries(groupedByCategory).map(([cat, items]) => (
-                  <>
-                    {/* 카테고리 헤더 */}
-                    <tr key={`cat-${cat}`} className="bg-slate-100">
-                      <td colSpan={12} className="px-4 py-2 font-bold text-slate-700">
-                        {cat} ({items.length})
-                      </td>
-                    </tr>
-                    {/* 상품 행 */}
-                    {items.map(item => (
-                      <tr 
-                        key={item.product_id} 
-                        className={`hover:bg-slate-50 transition-colors ${item.stockout_risk ? 'bg-red-50/50' : ''}`}
-                      >
-                        <td className="px-4 py-3 font-medium text-slate-900 max-w-[200px] truncate" title={item.name}>
-                          {item.name}
-                        </td>
-                        <td className="px-4 py-3 text-right font-semibold text-slate-900 bg-blue-50/50">
-                          {formatNumber(item.total_qty)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_7d)}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_30d)}</td>
-                        <td className="px-4 py-3 text-right font-medium text-slate-700 bg-yellow-50/50">
-                          {formatNumber(item.sales_60d)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_90d)}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_120d)}</td>
-                        <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_60d, true)}</td>
-                        <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_90d, true)}</td>
-                        <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_120d, true)}</td>
-                        <td className="px-4 py-3 text-right bg-green-50/50">{formatNumber(item.coupang_need_40d, true)}</td>
-                        <td className="px-4 py-3 text-center">
-                          {item.stockout_risk && (
-                            <span className="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-600 rounded-full font-bold text-xs">
-                              O
+                {Object.entries(groupedByCategory).map(([cat, items]) => {
+                  const isCollapsed = collapsedCategories.has(cat);
+                  return (
+                    <Fragment key={`cat-${cat}`}>
+                      {/* 카테고리 헤더 — 클릭으로 접기/펼치기 */}
+                      <tr className="bg-slate-100">
+                        <td colSpan={12} className="px-0 py-0">
+                          <button
+                            type="button"
+                            onClick={() => toggleCategory(cat)}
+                            className="w-full px-4 py-2 flex items-center gap-2 text-left font-bold text-slate-700 hover:bg-slate-200 active:bg-slate-300 transition-colors"
+                            aria-expanded={!isCollapsed}
+                          >
+                            <span className={`inline-block transition-transform text-xs ${isCollapsed ? '' : 'rotate-90'}`}>
+                              ▶
                             </span>
-                          )}
+                            {cat} ({items.length})
+                          </button>
                         </td>
                       </tr>
-                    ))}
-                  </>
-                ))}
+                      {/* 상품 행 */}
+                      {!isCollapsed && items.map(item => (
+                        <tr 
+                          key={item.product_id} 
+                          className={`hover:bg-slate-50 transition-colors ${item.stockout_risk ? 'bg-red-50/50' : ''}`}
+                        >
+                          <td className="px-4 py-3 font-medium text-slate-900 max-w-[200px] truncate" title={item.name}>
+                            {item.name}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-slate-900 bg-blue-50/50">
+                            {formatNumber(item.total_qty)}
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_7d)}</td>
+                          <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_30d)}</td>
+                          <td className="px-4 py-3 text-right font-medium text-slate-700 bg-yellow-50/50">
+                            {formatNumber(item.sales_60d)}
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_90d)}</td>
+                          <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_120d)}</td>
+                          <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_60d, true)}</td>
+                          <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_90d, true)}</td>
+                          <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_120d, true)}</td>
+                          <td className="px-4 py-3 text-right bg-green-50/50">{formatNumber(item.coupang_need_40d, true)}</td>
+                          <td className="px-4 py-3 text-center">
+                            {item.stockout_risk && (
+                              <span className="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-600 rounded-full font-bold text-xs">
+                                O
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                })}
                 {filteredItems.length === 0 && (
                   <tr>
                     <td colSpan={12} className="px-4 py-12 text-center text-slate-400">
