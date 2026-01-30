@@ -291,8 +291,9 @@ export async function GET(request: NextRequest) {
 
     // ====================================================================
     // 4-1a. naver_orders 테이블에서 네이버 주문 조회 (결제일 기준)
-    // 기존 inventory_logs(출고일 기준) 대신 payment_date(결제일) 기준 사용
+    // naver_orders가 비어있으면 fallback으로 inventory_logs 사용
     // ====================================================================
+    let useNaverOrdersTable = false;
     const naverOrders = await fetchAll<any>(
       (from, to) => getSupabase()
         .from('naver_orders')
@@ -303,23 +304,27 @@ export async function GET(request: NextRequest) {
         .range(from, to)
     );
 
-    naverOrders?.forEach((order: any) => {
-      const productId = order.product_id;
-      if (!productId) return;
+    if (naverOrders && naverOrders.length > 0) {
+      useNaverOrdersTable = true;
+      naverOrders.forEach((order: any) => {
+        const productId = order.product_id;
+        if (!productId) return;
 
-      const paymentDate = new Date(order.payment_date);
-      const daysAgo = getDaysAgo(paymentDate, now);
-      const qty = order.quantity || 1;
+        const paymentDate = new Date(order.payment_date);
+        const daysAgo = getDaysAgo(paymentDate, now);
+        const qty = order.quantity || 1;
 
-      addSales(salesByProduct, productId, daysAgo, qty);
-      addSalesBySource(salesBySource, productId, 'naver', daysAgo, qty);
-    });
+        addSales(salesByProduct, productId, daysAgo, qty);
+        addSalesBySource(salesBySource, productId, 'naver', daysAgo, qty);
+      });
+    }
 
     // ====================================================================
-    // 4-1b. inventory_logs에서 출고 기록 조회 (바코드 스캔 등, 네이버 외)
-    // 네이버 주문은 naver_orders에서 가져오므로, reference_type='naver_order'는 제외
+    // 4-1b. inventory_logs에서 출고 기록 조회
+    // naver_orders에 데이터가 있으면 → naver_order 제외 (중복 방지)
+    // naver_orders가 비어있으면 → naver_order 포함 (fallback)
     // ====================================================================
-    const { data: inventoryLogs, error: logsError } = await getSupabase()
+    let logsQuery = getSupabase()
       .from('inventory_logs')
       .select(`
         inventory_id,
@@ -329,8 +334,14 @@ export async function GET(request: NextRequest) {
         inventory!inner(product_id, location)
       `)
       .eq('change_type', 'out')
-      .neq('reference_type', 'naver_order')
       .gte('created_at', date120dAgo.toISOString());
+
+    // naver_orders에 데이터가 있을 때만 naver_order 출고 제외
+    if (useNaverOrdersTable) {
+      logsQuery = logsQuery.neq('reference_type', 'naver_order');
+    }
+
+    const { data: inventoryLogs, error: logsError } = await logsQuery;
 
     if (logsError) {
       console.error('Inventory logs query error:', logsError);
@@ -344,8 +355,10 @@ export async function GET(request: NextRequest) {
         const qty = Math.abs(log.change_qty);
 
         addSales(salesByProduct, productId, daysAgo, qty);
-        // 네이버 이외의 출고는 'other' 소스로 분류
-        addSalesBySource(salesBySource, productId, 'other', daysAgo, qty);
+        // naver_orders fallback일 때: naver_order 출고는 'naver' 소스로 분류
+        // naver_orders 사용 중일 때: naver_order 제외됨 → 나머지는 'other'
+        const source = (!useNaverOrdersTable && log.reference_type === 'naver_order') ? 'naver' : 'other';
+        addSalesBySource(salesBySource, productId, source as SourceKey, daysAgo, qty);
       });
     }
 
