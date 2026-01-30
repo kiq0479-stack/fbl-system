@@ -338,58 +338,27 @@ export default function ForecastPage() {
                           )}
                         </td>
                       </tr>
-                      {/* 펼침: 채널별 판매량 + 재고 */}
-                      {isItemExpanded && (
-                        <tr className="bg-slate-50/80">
-                          <td colSpan={12} className="px-4 py-3">
-                            <div className="ml-5 space-y-2 text-sm">
-                              {/* 재고 */}
-                              <div className="flex flex-wrap gap-4">
-                                <div><span className="text-slate-500">창고</span> <span className="font-semibold">{formatNumber(item.warehouse_qty)}</span></div>
-                                <div><span className="text-slate-500">쿠팡센터</span> <span className="font-semibold">{formatNumber(item.coupang_qty)}</span></div>
-                                <div><span className="text-slate-500">SKU</span> <span className="font-medium text-slate-600">{item.sku || '-'}</span></div>
-                              </div>
-                              {/* 채널별 판매량 */}
-                              {item.by_source && (
-                                <table className="w-full text-xs mt-1">
-                                  <thead>
-                                    <tr className="text-slate-500">
-                                      <th className="text-left py-1 font-medium">채널</th>
-                                      <th className="text-right py-1 font-medium">7일</th>
-                                      <th className="text-right py-1 font-medium">30일</th>
-                                      <th className="text-right py-1 font-medium">60일</th>
-                                      <th className="text-right py-1 font-medium">120일</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    <tr className="text-green-700">
-                                      <td className="py-1">🟢 네이버</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.naver.d7)}</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.naver.d30)}</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.naver.d60)}</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.naver.d120)}</td>
-                                    </tr>
-                                    <tr className="text-blue-700">
-                                      <td className="py-1">📦 쿠팡판매자</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_seller.d7)}</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_seller.d30)}</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_seller.d60)}</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_seller.d120)}</td>
-                                    </tr>
-                                    <tr className="text-purple-700">
-                                      <td className="py-1">🚀 쿠팡로켓</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_rocket.d7)}</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_rocket.d30)}</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_rocket.d60)}</td>
-                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_rocket.d120)}</td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              )}
-                            </div>
-                          </td>
+                      {/* 펼침: 채널별 판매량 (같은 테이블 열 사용) */}
+                      {isItemExpanded && item.by_source && [
+                        { key: 'naver', label: '🟢 네이버', cls: 'bg-green-50', s: item.by_source.naver },
+                        { key: 'seller', label: '📦 쿠팡판매자', cls: 'bg-blue-50', s: item.by_source.coupang_seller },
+                        { key: 'rocket', label: '🚀 쿠팡로켓', cls: 'bg-purple-50', s: item.by_source.coupang_rocket },
+                      ].map(ch => (
+                        <tr key={`${item.product_id}-${ch.key}`} className={ch.cls}>
+                          <td className="pl-8 pr-3 py-1.5 text-xs whitespace-nowrap">{ch.label}</td>
+                          <td className="px-4 py-1.5 text-right text-xs bg-blue-50/50">-</td>
+                          <td className="px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d7)}</td>
+                          <td className="px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d30)}</td>
+                          <td className="px-4 py-1.5 text-right text-xs font-medium bg-yellow-50/50">{formatNumber(ch.s.d60)}</td>
+                          <td className="px-4 py-1.5 text-right text-xs">-</td>
+                          <td className="px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d120)}</td>
+                          <td className="px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>
+                          <td className="px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>
+                          <td className="px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>
+                          <td className="px-4 py-1.5 text-right text-xs bg-green-50/50">-</td>
+                          <td className="px-4 py-1.5 text-center text-xs">-</td>
                         </tr>
-                      )}
+                      ))}
                     </Fragment>
                   );
                 })}
