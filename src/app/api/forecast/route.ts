@@ -290,7 +290,34 @@ export async function GET(request: NextRequest) {
     }
 
     // ====================================================================
-    // 4-1. inventory_logs에서 출고 기록 조회 (네이버 주문, 바코드 스캔 등)
+    // 4-1a. naver_orders 테이블에서 네이버 주문 조회 (결제일 기준)
+    // 기존 inventory_logs(출고일 기준) 대신 payment_date(결제일) 기준 사용
+    // ====================================================================
+    const naverOrders = await fetchAll<any>(
+      (from, to) => getSupabase()
+        .from('naver_orders')
+        .select('product_id, quantity, payment_date, status')
+        .not('product_id', 'is', null)
+        .gte('payment_date', date120dAgo.toISOString())
+        .not('status', 'in', '("CANCELED","RETURNED","CANCELED_BY_NOPAYMENT")')
+        .range(from, to)
+    );
+
+    naverOrders?.forEach((order: any) => {
+      const productId = order.product_id;
+      if (!productId) return;
+
+      const paymentDate = new Date(order.payment_date);
+      const daysAgo = getDaysAgo(paymentDate, now);
+      const qty = order.quantity || 1;
+
+      addSales(salesByProduct, productId, daysAgo, qty);
+      addSalesBySource(salesBySource, productId, 'naver', daysAgo, qty);
+    });
+
+    // ====================================================================
+    // 4-1b. inventory_logs에서 출고 기록 조회 (바코드 스캔 등, 네이버 외)
+    // 네이버 주문은 naver_orders에서 가져오므로, reference_type='naver_order'는 제외
     // ====================================================================
     const { data: inventoryLogs, error: logsError } = await getSupabase()
       .from('inventory_logs')
@@ -298,9 +325,11 @@ export async function GET(request: NextRequest) {
         inventory_id,
         change_qty,
         created_at,
+        reference_type,
         inventory!inner(product_id, location)
       `)
       .eq('change_type', 'out')
+      .neq('reference_type', 'naver_order')
       .gte('created_at', date120dAgo.toISOString());
 
     if (logsError) {
@@ -315,7 +344,8 @@ export async function GET(request: NextRequest) {
         const qty = Math.abs(log.change_qty);
 
         addSales(salesByProduct, productId, daysAgo, qty);
-        addSalesBySource(salesBySource, productId, 'naver', daysAgo, qty);
+        // 네이버 이외의 출고는 'other' 소스로 분류
+        addSalesBySource(salesBySource, productId, 'other', daysAgo, qty);
       });
     }
 
