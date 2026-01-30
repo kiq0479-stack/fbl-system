@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrders, getCoupangAccounts } from '@/lib/coupang';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Service Role Key가 없으면 Anon Key 사용
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !supabaseKey) {
-  throw new Error('Supabase environment variables are not configured');
+// Lazy 초기화 (빌드 타임에 throw 방지)
+let _supabase: SupabaseClient | null = null;
+function getSupabase() {
+  if (!_supabase) {
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !supabaseKey) {
+      throw new Error('Supabase environment variables are not configured');
+    }
+    _supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, supabaseKey);
+  }
+  return _supabase;
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  supabaseKey
-);
 
 // 쿠팡 주문 동기화 API
 export async function POST(request: NextRequest) {
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
     for (const order of orders) {
       try {
         // 이미 존재하는 주문인지 확인
-        const { data: existing } = await supabase
+        const { data: existing } = await getSupabase()
           .from('coupang_orders')
           .select('id, status')
           .eq('shipment_box_id', order.shipmentBoxId)
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
         if (existing) {
           // 상태가 변경된 경우에만 업데이트
           if (existing.status !== order.status) {
-            await supabase
+            await getSupabase()
               .from('coupang_orders')
               .update({
                 status: order.status,
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 새 주문 삽입
-        const { data: newOrder, error: orderError } = await supabase
+        const { data: newOrder, error: orderError } = await getSupabase()
           .from('coupang_orders')
           .insert({
             shipment_box_id: order.shipmentBoxId,
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
             seller_product_item_name: item.sellerProductItemName || null,
           }));
 
-          const { error: itemsError } = await supabase
+          const { error: itemsError } = await getSupabase()
             .from('coupang_order_items')
             .insert(itemsToInsert);
 
@@ -155,7 +156,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 동기화 로그 기록
-    await supabase.from('api_sync_logs').insert({
+    await getSupabase().from('api_sync_logs').insert({
       channel: 'coupang',
       sync_type: 'orders',
       status: errors.length > 0 ? 'failed' : 'success',

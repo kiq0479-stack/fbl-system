@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRevenueHistory, getCoupangAccounts } from '@/lib/coupang';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Service Role Key가 없으면 Anon Key 사용 (RLS 정책 필요)
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !supabaseKey) {
-  throw new Error('Supabase environment variables are not configured');
+// Lazy 초기화 (빌드 타임에 throw 방지)
+let _supabase: SupabaseClient | null = null;
+function getSupabase() {
+  if (!_supabase) {
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !supabaseKey) {
+      throw new Error('Supabase environment variables are not configured');
+    }
+    _supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, supabaseKey);
+  }
+  return _supabase;
 }
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  supabaseKey
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     for (const { data: revenue, vendorId } of allRevenues) {
       try {
         // 매출내역 저장 (coupang_revenues 테이블 필요)
-        const { error } = await supabase
+        const { error } = await getSupabase()
           .from('coupang_revenues')
           .upsert({
             order_id: String(revenue.orderId),

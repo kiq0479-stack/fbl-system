@@ -1,15 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+let _supabase: SupabaseClient | null = null;
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }
+  return _supabase;
+}
 
 export async function POST() {
   try {
     // 모든 주문 조회
-    const { data: orders, error: ordersError } = await supabase
+    const { data: orders, error: ordersError } = await getSupabase()
       .from('orders')
       .select('id');
 
@@ -19,7 +25,7 @@ export async function POST() {
 
     for (const order of orders || []) {
       // 주문 품목 조회
-      const { data: items, error: itemsError } = await supabase
+      const { data: items, error: itemsError } = await getSupabase()
         .from('order_items')
         .select('*, product:products(cbm)')
         .eq('order_id', order.id);
@@ -54,7 +60,7 @@ export async function POST() {
       }, 0);
 
       // 주문 업데이트
-      const { error: updateError } = await supabase
+      const { error: updateError } = await getSupabase()
         .from('orders')
         .update({
           total_cbm: Math.round(totalCbm * 100) / 100,
