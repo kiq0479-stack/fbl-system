@@ -90,7 +90,7 @@ export default function ForecastPage() {
 
   useEffect(() => {
     fetchForecast();
-  }, [category, onlyRisk]);
+  }, [onlyRisk]);
 
   // 검색 필터
   const filteredItems = data?.items.filter(item => {
@@ -240,23 +240,12 @@ export default function ForecastPage() {
             placeholder="상품명, SKU 검색..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 sm:flex-none px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-64"
+            className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {search && (
             <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600 p-2">✕</button>
           )}
         </div>
-        
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="all">전체 카테고리</option>
-          {data?.categories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
 
         <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
           <input
@@ -285,166 +274,82 @@ export default function ForecastPage() {
         </div>
       )}
 
-      {/* 테이블 */}
+      {/* 상품 리스트 */}
       {!loading && data && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
-                <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-600 whitespace-nowrap">상품명</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-blue-50">총수량</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">7일</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">30일</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-yellow-50">60일</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">90일</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">120일</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">60일필요</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">90일필요</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">120일필요</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-green-50">쿠팡40일</th>
-                  <th className="px-4 py-3 text-center font-semibold text-slate-600 whitespace-nowrap">위험</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {Object.entries(groupedByCategory).map(([cat, items]) => {
-                  const isCollapsed = collapsedCategories.has(cat);
-                  return (
-                    <Fragment key={`cat-${cat}`}>
-                      {/* 카테고리 헤더 — 클릭으로 접기/펼치기 */}
-                      <tr className="bg-slate-100">
-                        <td colSpan={12} className="px-0 py-0">
-                          <button
-                            type="button"
-                            onClick={() => toggleCategory(cat)}
-                            className="w-full px-4 py-2 flex items-center gap-2 text-left font-bold text-slate-700 hover:bg-slate-200 active:bg-slate-300 transition-colors"
-                            aria-expanded={!isCollapsed}
-                          >
-                            <span className={`inline-block transition-transform text-xs ${isCollapsed ? '' : 'rotate-90'}`}>
-                              ▶
-                            </span>
-                            {cat} ({items.length})
-                          </button>
-                        </td>
-                      </tr>
-                      {/* 상품 행 */}
-                      {!isCollapsed && items.map(item => {
-                        const isItemExpanded = expandedItems.has(item.product_id);
-                        return (
-                          <Fragment key={item.product_id}>
-                            <tr 
-                              className={`transition-colors ${item.stockout_risk ? 'bg-red-50/50' : ''} ${isItemExpanded ? 'bg-blue-50/30' : ''}`}
-                            >
-                              <td className="px-3 py-3">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleItem(item.product_id)}
-                                  className="flex items-start gap-1.5 w-full text-left hover:opacity-80 active:opacity-60"
-                                  aria-expanded={isItemExpanded}
-                                >
-                                  <span className={`inline-block transition-transform text-[10px] mt-1 shrink-0 text-slate-400 ${isItemExpanded ? 'rotate-90' : ''}`}>
-                                    ▶
-                                  </span>
-                                  <span className="font-medium text-slate-900 line-clamp-2">{item.name}</span>
-                                </button>
-                              </td>
-                              <td className="px-4 py-3 text-right font-semibold text-slate-900 bg-blue-50/50">
-                                {formatNumber(item.total_qty)}
-                              </td>
-                              <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_7d)}</td>
-                              <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_30d)}</td>
-                              <td className="px-4 py-3 text-right font-medium text-slate-700 bg-yellow-50/50">
-                                {formatNumber(item.sales_60d)}
-                              </td>
-                              <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_90d)}</td>
-                              <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_120d)}</td>
-                              <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_60d, true)}</td>
-                              <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_90d, true)}</td>
-                              <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_120d, true)}</td>
-                              <td className="px-4 py-3 text-right bg-green-50/50">{formatNumber(item.coupang_need_40d, true)}</td>
-                              <td className="px-4 py-3 text-center">
-                                {item.stockout_risk && (
-                                  <span className="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-600 rounded-full font-bold text-xs">
-                                    O
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                            {/* 펼침: 모바일에서 잘리는 데이터를 카드로 표시 */}
-                            {isItemExpanded && (
-                              <tr className="bg-slate-50/80">
-                                <td colSpan={12} className="px-4 py-3">
-                                  <div className="ml-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">총수량</span>
-                                      <span className="font-semibold text-slate-900 sm:ml-2">{formatNumber(item.total_qty)}</span>
-                                    </div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">창고</span>
-                                      <span className="font-medium sm:ml-2">{formatNumber(item.warehouse_qty)}</span>
-                                    </div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">쿠팡</span>
-                                      <span className="font-medium sm:ml-2">{formatNumber(item.coupang_qty)}</span>
-                                    </div>
-                                    <div className="col-span-2 sm:col-span-3 md:col-span-4 border-t border-slate-200 mt-1 pt-2 font-medium text-slate-600">판매량</div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">7일</span>
-                                      <span className="sm:ml-2">{formatNumber(item.sales_7d)}</span>
-                                    </div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">30일</span>
-                                      <span className="sm:ml-2">{formatNumber(item.sales_30d)}</span>
-                                    </div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">60일</span>
-                                      <span className="font-medium sm:ml-2">{formatNumber(item.sales_60d)}</span>
-                                    </div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">90일</span>
-                                      <span className="sm:ml-2">{formatNumber(item.sales_90d)}</span>
-                                    </div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">120일</span>
-                                      <span className="sm:ml-2">{formatNumber(item.sales_120d)}</span>
-                                    </div>
-                                    <div className="col-span-2 sm:col-span-3 md:col-span-4 border-t border-slate-200 mt-1 pt-2 font-medium text-slate-600">필요 재고</div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">60일</span>
-                                      <span className="sm:ml-2">{formatNumber(item.need_60d, true)}</span>
-                                    </div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">90일</span>
-                                      <span className="sm:ml-2">{formatNumber(item.need_90d, true)}</span>
-                                    </div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">120일</span>
-                                      <span className="sm:ml-2">{formatNumber(item.need_120d, true)}</span>
-                                    </div>
-                                    <div className="flex justify-between sm:block">
-                                      <span className="text-slate-500">쿠팡 40일</span>
-                                      <span className="sm:ml-2">{formatNumber(item.coupang_need_40d, true)}</span>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </Fragment>
-                        );
-                      })}
-                    </Fragment>
-                  );
-                })}
-                {filteredItems.length === 0 && (
-                  <tr>
-                    <td colSpan={12} className="px-4 py-12 text-center text-slate-400">
-                      {search ? '검색 결과가 없습니다' : '데이터가 없습니다'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 divide-y divide-slate-100">
+          {filteredItems.length === 0 ? (
+            <div className="px-4 py-12 text-center text-slate-400">
+              {search ? '검색 결과가 없습니다' : '데이터가 없습니다'}
+            </div>
+          ) : (
+            filteredItems.map(item => {
+              const isItemExpanded = expandedItems.has(item.product_id);
+              return (
+                <div key={item.product_id} className={item.stockout_risk ? 'bg-red-50/50' : ''}>
+                  {/* 상품 행 */}
+                  <button
+                    type="button"
+                    onClick={() => toggleItem(item.product_id)}
+                    className={`w-full px-4 py-3 flex items-start gap-2 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors ${isItemExpanded ? 'bg-slate-50' : ''}`}
+                    aria-expanded={isItemExpanded}
+                  >
+                    <span className={`inline-block transition-transform text-xs mt-0.5 shrink-0 text-slate-400 ${isItemExpanded ? 'rotate-90' : ''}`}>
+                      ▶
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-slate-900">{item.name}</div>
+                      <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
+                        <span>재고 <strong className="text-slate-700">{item.total_qty}</strong></span>
+                        <span>7일 <strong className="text-slate-700">{item.sales_7d}</strong></span>
+                        <span>30일 <strong className="text-slate-700">{item.sales_30d}</strong></span>
+                        {item.stockout_risk && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-bold">위험</span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* 펼침: 상세 정보 카드 */}
+                  {isItemExpanded && (
+                    <div className="px-4 pb-4 pt-1">
+                      <div className="ml-5 bg-slate-50 rounded-lg p-3 space-y-3 text-sm">
+                        {/* 재고 */}
+                        <div>
+                          <div className="font-medium text-slate-600 mb-1.5">📦 재고</div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="flex justify-between"><span className="text-slate-500">총수량</span><span className="font-semibold">{formatNumber(item.total_qty)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">창고</span><span className="font-medium">{formatNumber(item.warehouse_qty)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">쿠팡</span><span className="font-medium">{formatNumber(item.coupang_qty)}</span></div>
+                          </div>
+                        </div>
+                        {/* 판매량 */}
+                        <div>
+                          <div className="font-medium text-slate-600 mb-1.5">📊 판매량</div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="flex justify-between"><span className="text-slate-500">7일</span><span>{formatNumber(item.sales_7d)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">30일</span><span>{formatNumber(item.sales_30d)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">60일</span><span className="font-medium">{formatNumber(item.sales_60d)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">90일</span><span>{formatNumber(item.sales_90d)}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">120일</span><span>{formatNumber(item.sales_120d)}</span></div>
+                          </div>
+                        </div>
+                        {/* 필요 재고 */}
+                        <div>
+                          <div className="font-medium text-slate-600 mb-1.5">🔔 필요 재고</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="flex justify-between"><span className="text-slate-500">60일</span>{formatNumber(item.need_60d, true)}</div>
+                            <div className="flex justify-between"><span className="text-slate-500">90일</span>{formatNumber(item.need_90d, true)}</div>
+                            <div className="flex justify-between"><span className="text-slate-500">120일</span>{formatNumber(item.need_120d, true)}</div>
+                            <div className="flex justify-between"><span className="text-slate-500">쿠팡40일</span>{formatNumber(item.coupang_need_40d, true)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       )}
 
