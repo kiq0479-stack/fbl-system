@@ -169,7 +169,6 @@ export default function SalesSummaryTable() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-3 py-3 font-medium text-slate-600 w-10"></th>
               <th className="text-left px-3 py-3 font-medium text-slate-600">상품명</th>
               <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">7일</th>
               <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">30일</th>
@@ -189,24 +188,23 @@ export default function SalesSummaryTable() {
                       isExpanded ? 'bg-slate-50' : ''
                     }`}
                   >
-                    <td className="px-2 py-3 text-center">
+                    <td className="px-3 py-3">
                       <button
                         type="button"
                         onClick={() => toggleExpand(group.key)}
-                        className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-slate-200 active:bg-slate-300 transition-colors"
+                        className="flex items-start gap-2 w-full text-left hover:opacity-80 active:opacity-60 transition-opacity"
                         aria-expanded={isExpanded}
-                        aria-label={`${group.productName} 상세 ${isExpanded ? '접기' : '펼치기'}`}
                       >
-                        <span className={`inline-block transition-transform text-xs ${isExpanded ? 'rotate-90' : ''}`}>
+                        <span className={`inline-block transition-transform text-xs mt-1 shrink-0 ${isExpanded ? 'rotate-90' : ''}`}>
                           ▶
                         </span>
+                        <span>
+                          <span className="font-medium text-slate-900">{group.productName}</span>
+                          {group.sku && (
+                            <span className="block text-xs text-slate-400 mt-0.5">SKU: {group.sku}</span>
+                          )}
+                        </span>
                       </button>
-                    </td>
-                    <td className="px-3 py-3 cursor-pointer" onClick={() => toggleExpand(group.key)}>
-                      <div className="font-medium text-slate-900">{group.productName}</div>
-                      {group.sku && (
-                        <div className="text-xs text-slate-400 mt-0.5">SKU: {group.sku}</div>
-                      )}
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-slate-700">{group.totalSales.d7.toLocaleString()}</td>
                     <td className="px-3 py-3 text-right font-mono font-semibold text-slate-900">{group.totalSales.d30.toLocaleString()}</td>
@@ -222,9 +220,8 @@ export default function SalesSummaryTable() {
                         key={`${group.key}-${src.key}`}
                         className={`${src.bg} border-b border-slate-100`}
                       >
-                        <td className="px-4 py-2"></td>
-                        <td className="px-4 py-2">
-                          <span className="pl-4 text-sm">
+                        <td className="px-3 py-2">
+                          <span className="pl-6 text-sm">
                             {src.emoji} {src.label}
                           </span>
                         </td>
