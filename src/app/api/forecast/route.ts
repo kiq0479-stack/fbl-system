@@ -320,35 +320,33 @@ export async function GET(request: NextRequest) {
     }
 
     // ====================================================================
-    // 4-2. coupang_revenues에서 쿠팡 매출 데이터 조회
-    // 실제 DB 구조: id, order_id, vendor_id, sale_type, sale_date, recognition_date, settlement_date, items(JSON)
+    // 4-2. rocket_growth_order_items에서 로켓그로스 주문 조회 (결제일 기준)
+    // rocket_growth_orders.paid_at = 결제일, rocket_growth_order_items.sales_quantity = 수량
     // ====================================================================
-    const coupangRevenues = await fetchAll<any>(
+    const rocketOrderItems = await fetchAll<any>(
       (from, to) => getSupabase()
-        .from('coupang_revenues')
-        .select('sale_date, items')
-        .gte('sale_date', date120dAgo.toISOString().split('T')[0])
+        .from('rocket_growth_order_items')
+        .select(`
+          vendor_item_id,
+          sales_quantity,
+          rocket_growth_orders!inner(paid_at)
+        `)
+        .gte('rocket_growth_orders.paid_at', date120dAgo.toISOString())
         .range(from, to)
     );
 
-    coupangRevenues.forEach((rev: any) => {
-      const saleDate = new Date(rev.sale_date);
-      const daysAgo = getDaysAgo(saleDate, now);
+    rocketOrderItems?.forEach((item: any) => {
+      const vendorItemId = item.vendor_item_id;
+      const qty = item.sales_quantity || 1;
       
-      // items는 JSON 배열: [{vendorItemId, quantity, ...}, ...]
-      const items = rev.items || [];
-      if (Array.isArray(items)) {
-        items.forEach((item: any) => {
-          const vendorItemId = item.vendorItemId || item.vendor_item_id;
-          const qty = item.quantity || item.salesQuantity || 1;
-          
-          const productId = findProductByVendorItemId(vendorItemId);
-          if (!productId) return;
-          
-          addSales(salesByProduct, productId, daysAgo, qty);
-          addSalesBySource(salesBySource, productId, 'coupang_rocket', daysAgo, qty);
-        });
-      }
+      const productId = findProductByVendorItemId(vendorItemId);
+      if (!productId) return;
+      
+      const paidDate = new Date(item.rocket_growth_orders?.paid_at);
+      const daysAgo = getDaysAgo(paidDate, now);
+      
+      addSales(salesByProduct, productId, daysAgo, qty);
+      addSalesBySource(salesBySource, productId, 'coupang_rocket', daysAgo, qty);
     });
 
     // ====================================================================
