@@ -83,16 +83,19 @@ function getDaysAgo(date: Date, now: Date): number {
   return Math.floor((now.getTime() - date.getTime()) / (24 * 60 * 60 * 1000));
 }
 
-// 판매량 누적 헬퍼
+type SalesBucket = { d7: number; d30: number; d40: number; d60: number; d90: number; d120: number };
+const ZERO_BUCKET = (): SalesBucket => ({ d7: 0, d30: 0, d40: 0, d60: 0, d90: 0, d120: 0 });
+
+type SourceKey = 'naver' | 'coupang_seller' | 'coupang_rocket' | 'other';
+
+// 판매량 누적 헬퍼 (소스별 추적)
 function addSales(
-  salesMap: Map<string, { d7: number; d30: number; d40: number; d60: number; d90: number; d120: number }>,
+  salesMap: Map<string, SalesBucket>,
   productId: string,
   daysAgo: number,
   qty: number
 ) {
-  if (!salesMap.has(productId)) {
-    salesMap.set(productId, { d7: 0, d30: 0, d40: 0, d60: 0, d90: 0, d120: 0 });
-  }
+  if (!salesMap.has(productId)) salesMap.set(productId, ZERO_BUCKET());
   const sales = salesMap.get(productId)!;
   if (daysAgo <= 7) sales.d7 += qty;
   if (daysAgo <= 30) sales.d30 += qty;
@@ -100,6 +103,25 @@ function addSales(
   if (daysAgo <= 60) sales.d60 += qty;
   if (daysAgo <= 90) sales.d90 += qty;
   if (daysAgo <= 120) sales.d120 += qty;
+}
+
+function addSalesBySource(
+  sourceMap: Map<string, Record<SourceKey, SalesBucket>>,
+  productId: string,
+  source: SourceKey,
+  daysAgo: number,
+  qty: number
+) {
+  if (!sourceMap.has(productId)) {
+    sourceMap.set(productId, { naver: ZERO_BUCKET(), coupang_seller: ZERO_BUCKET(), coupang_rocket: ZERO_BUCKET(), other: ZERO_BUCKET() });
+  }
+  const bucket = sourceMap.get(productId)![source];
+  if (daysAgo <= 7) bucket.d7 += qty;
+  if (daysAgo <= 30) bucket.d30 += qty;
+  if (daysAgo <= 40) bucket.d40 += qty;
+  if (daysAgo <= 60) bucket.d60 += qty;
+  if (daysAgo <= 90) bucket.d90 += qty;
+  if (daysAgo <= 120) bucket.d120 += qty;
 }
 
 export async function GET(request: NextRequest) {
@@ -212,7 +234,8 @@ export async function GET(request: NextRequest) {
 
     const now = getKSTDate(0);
     const date120dAgo = getKSTDate(120);
-    const salesByProduct = new Map<string, { d7: number; d30: number; d40: number; d60: number; d90: number; d120: number }>();
+    const salesByProduct = new Map<string, SalesBucket>();
+    const salesBySource = new Map<string, Record<SourceKey, SalesBucket>>();
 
     // 중복 방지용: sales 테이블에서 가져온 product_id 세트 (sales_daily와 중복 방지)
     const salesProductIds = new Set<string>();
@@ -292,6 +315,7 @@ export async function GET(request: NextRequest) {
         const qty = Math.abs(log.change_qty);
 
         addSales(salesByProduct, productId, daysAgo, qty);
+        addSalesBySource(salesBySource, productId, 'naver', daysAgo, qty);
       });
     }
 
@@ -322,6 +346,7 @@ export async function GET(request: NextRequest) {
           if (!productId) return;
           
           addSales(salesByProduct, productId, daysAgo, qty);
+          addSalesBySource(salesBySource, productId, 'coupang_rocket', daysAgo, qty);
         });
       }
     });
@@ -359,6 +384,7 @@ export async function GET(request: NextRequest) {
         const qty = item.shipping_count || 0;
 
         addSales(salesByProduct, productId, daysAgo, qty);
+        addSalesBySource(salesBySource, productId, 'coupang_seller', daysAgo, qty);
       });
     }
 
@@ -369,6 +395,7 @@ export async function GET(request: NextRequest) {
       const inv = inventoryMap.get(product.id) || { warehouse: 0, coupang: 0 };
       const sales = salesByProduct.get(product.id) || { d7: 0, d30: 0, d40: 0, d60: 0, d90: 0, d120: 0 };
       
+      const sourceSales = salesBySource.get(product.id) || { naver: ZERO_BUCKET(), coupang_seller: ZERO_BUCKET(), coupang_rocket: ZERO_BUCKET(), other: ZERO_BUCKET() };
       const warehouseQty = inv.warehouse;
       const coupangQty = inv.coupang;
       const totalQty = warehouseQty + coupangQty;
@@ -403,6 +430,11 @@ export async function GET(request: NextRequest) {
         need_120d: need120d,
         coupang_need_40d: coupangNeed40d,
         stockout_risk: stockoutRisk,
+        by_source: {
+          naver: { d7: sourceSales.naver.d7, d30: sourceSales.naver.d30, d60: sourceSales.naver.d60, d120: sourceSales.naver.d120 },
+          coupang_seller: { d7: sourceSales.coupang_seller.d7, d30: sourceSales.coupang_seller.d30, d60: sourceSales.coupang_seller.d60, d120: sourceSales.coupang_seller.d120 },
+          coupang_rocket: { d7: sourceSales.coupang_rocket.d7, d30: sourceSales.coupang_rocket.d30, d60: sourceSales.coupang_rocket.d60, d120: sourceSales.coupang_rocket.d120 },
+        },
       };
     });
 

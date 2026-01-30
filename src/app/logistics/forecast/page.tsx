@@ -21,6 +21,11 @@ interface ForecastItem {
   need_120d: number;
   coupang_need_40d: number;
   stockout_risk: boolean;
+  by_source: {
+    naver: { d7: number; d30: number; d60: number; d120: number };
+    coupang_seller: { d7: number; d30: number; d60: number; d120: number };
+    coupang_rocket: { d7: number; d30: number; d60: number; d120: number };
+  };
 }
 
 interface ForecastResponse {
@@ -333,15 +338,54 @@ export default function ForecastPage() {
                           )}
                         </td>
                       </tr>
-                      {/* 펼침: 상세 (창고/쿠팡 분리 등) */}
+                      {/* 펼침: 채널별 판매량 + 재고 */}
                       {isItemExpanded && (
                         <tr className="bg-slate-50/80">
                           <td colSpan={12} className="px-4 py-3">
-                            <div className="ml-5 flex flex-wrap gap-4 text-sm">
-                              <div><span className="text-slate-500">창고</span> <span className="font-medium">{formatNumber(item.warehouse_qty)}</span></div>
-                              <div><span className="text-slate-500">쿠팡</span> <span className="font-medium">{formatNumber(item.coupang_qty)}</span></div>
-                              <div><span className="text-slate-500">SKU</span> <span className="font-medium">{item.sku || '-'}</span></div>
-                              <div><span className="text-slate-500">카테고리</span> <span className="font-medium">{item.category || '-'}</span></div>
+                            <div className="ml-5 space-y-2 text-sm">
+                              {/* 재고 */}
+                              <div className="flex flex-wrap gap-4">
+                                <div><span className="text-slate-500">창고</span> <span className="font-semibold">{formatNumber(item.warehouse_qty)}</span></div>
+                                <div><span className="text-slate-500">쿠팡센터</span> <span className="font-semibold">{formatNumber(item.coupang_qty)}</span></div>
+                                <div><span className="text-slate-500">SKU</span> <span className="font-medium text-slate-600">{item.sku || '-'}</span></div>
+                              </div>
+                              {/* 채널별 판매량 */}
+                              {item.by_source && (
+                                <table className="w-full text-xs mt-1">
+                                  <thead>
+                                    <tr className="text-slate-500">
+                                      <th className="text-left py-1 font-medium">채널</th>
+                                      <th className="text-right py-1 font-medium">7일</th>
+                                      <th className="text-right py-1 font-medium">30일</th>
+                                      <th className="text-right py-1 font-medium">60일</th>
+                                      <th className="text-right py-1 font-medium">120일</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="text-green-700">
+                                      <td className="py-1">🟢 네이버</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.naver.d7)}</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.naver.d30)}</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.naver.d60)}</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.naver.d120)}</td>
+                                    </tr>
+                                    <tr className="text-blue-700">
+                                      <td className="py-1">📦 쿠팡판매자</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_seller.d7)}</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_seller.d30)}</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_seller.d60)}</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_seller.d120)}</td>
+                                    </tr>
+                                    <tr className="text-purple-700">
+                                      <td className="py-1">🚀 쿠팡로켓</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_rocket.d7)}</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_rocket.d30)}</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_rocket.d60)}</td>
+                                      <td className="text-right py-1">{formatNumber(item.by_source.coupang_rocket.d120)}</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              )}
                             </div>
                           </td>
                         </tr>
