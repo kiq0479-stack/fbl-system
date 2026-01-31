@@ -55,12 +55,17 @@ async function syncOrders(orders: any[]): Promise<{ synced: number; skipped: num
         continue;
       }
 
+      // paidAt: Unix timestamp(ms) → ISO string 변환
+      const paidAtISO = typeof order.paidAt === 'number'
+        ? new Date(order.paidAt).toISOString()
+        : order.paidAt;
+
       const { data: newOrder, error: orderError } = await getSupabase()
         .from('rocket_growth_orders')
         .insert({
           order_id: order.orderId,
           vendor_id: order.vendorId,
-          paid_at: order.paidAt,
+          paid_at: paidAtISO,
           raw_data: order,
           synced_at: new Date().toISOString(),
         })
