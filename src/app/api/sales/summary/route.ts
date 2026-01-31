@@ -84,6 +84,7 @@ async function fetchSellerSales(): Promise<SalesSummaryItem[]> {
   const { data: orders, error: orderErr } = await supabase
     .from('coupang_orders')
     .select('id, ordered_at')
+    .neq('orderer_name', '(로켓그로스)')
     .gte('ordered_at', cutoff);
 
   if (orderErr) {
