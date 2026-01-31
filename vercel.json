@@ -7,6 +7,10 @@
     {
       "path": "/api/coupang/sync-cron",
       "schedule": "30 21 * * *"
+    },
+    {
+      "path": "/api/coupang/rocket/sync",
+      "schedule": "0 22 * * *"
     }
   ]
 }
