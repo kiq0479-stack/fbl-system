@@ -394,7 +394,8 @@ export async function GET(request: NextRequest) {
     });
 
     // ====================================================================
-    // 4-3. coupang_order_items에서 쿠팡 주문 조회 (페이지네이션)
+    // 4-3. coupang_order_items에서 쿠팡 판매자배송 주문 조회 (페이지네이션)
+    // ★ 로켓그로스 주문 제외: orderer_name이 '(로켓그로스)'인 주문은 rocket_growth에서 처리
     // ====================================================================
     const coupangOrderItems = await fetchAll<any>(
       (from, to) => getSupabase()
@@ -404,8 +405,9 @@ export async function GET(request: NextRequest) {
           shipping_count,
           external_vendor_sku_code,
           created_at,
-          coupang_orders!inner(ordered_at)
+          coupang_orders!inner(ordered_at, orderer_name)
         `)
+        .neq('coupang_orders.orderer_name', '(로켓그로스)')
         .gte('created_at', date120dAgo.toISOString())
         .range(from, to)
     );

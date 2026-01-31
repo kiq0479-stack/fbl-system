@@ -62,10 +62,27 @@ async function syncDateStatus(
       } while (nextToken && Date.now() - startTime < MAX_RUNTIME_MS);
 
       if (allOrders.length === 0) continue;
-      fetched += allOrders.length;
+
+      // ★ 로켓그로스 주문 필터링 (orderer_name이 '(로켓그로스)'인 주문은 skip)
+      // 로켓그로스는 rocket_growth_orders 테이블에서 별도 관리됨
+      const sellerOrders = allOrders.filter(order => {
+        // ordererName이 '(로켓그로스)'이면 skip
+        if (order.ordererName === '(로켓그로스)') return false;
+        // shipmentBoxId와 orderId가 동일하면 로켓그로스 주문 (추가 안전장치)
+        if (String(order.shipmentBoxId) === String(order.orderId)) return false;
+        return true;
+      });
+      
+      const filteredOut = allOrders.length - sellerOrders.length;
+      if (filteredOut > 0) {
+        console.log(`[sync-cron] Filtered out ${filteredOut} rocket growth orders from ${allOrders.length} total`);
+      }
+      
+      fetched += sellerOrders.length;
+      if (sellerOrders.length === 0) continue;
 
       // Batch check existing
-      const shipmentBoxIds = allOrders.map(o => o.shipmentBoxId);
+      const shipmentBoxIds = sellerOrders.map(o => o.shipmentBoxId);
       const { data: existing } = await getSupabase()
         .from('coupang_orders')
         .select('id, shipment_box_id, status')
@@ -75,7 +92,7 @@ async function syncDateStatus(
         (existing || []).map(e => [e.shipment_box_id, { id: e.id, status: e.status }])
       );
 
-      for (const order of allOrders) {
+      for (const order of sellerOrders) {
         if (Date.now() - startTime > MAX_RUNTIME_MS) break;
 
         const existingOrder = existingMap.get(order.shipmentBoxId);
