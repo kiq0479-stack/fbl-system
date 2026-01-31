@@ -97,12 +97,12 @@ function addSales(
 ) {
   if (!salesMap.has(productId)) salesMap.set(productId, ZERO_BUCKET());
   const sales = salesMap.get(productId)!;
-  if (daysAgo <= 7) sales.d7 += qty;
-  if (daysAgo <= 30) sales.d30 += qty;
-  if (daysAgo <= 40) sales.d40 += qty;
-  if (daysAgo <= 60) sales.d60 += qty;
-  if (daysAgo <= 90) sales.d90 += qty;
-  if (daysAgo <= 120) sales.d120 += qty;
+  if (daysAgo < 7) sales.d7 += qty;
+  if (daysAgo < 30) sales.d30 += qty;
+  if (daysAgo < 40) sales.d40 += qty;
+  if (daysAgo < 60) sales.d60 += qty;
+  if (daysAgo < 90) sales.d90 += qty;
+  if (daysAgo < 120) sales.d120 += qty;
 }
 
 function addSalesBySource(
@@ -116,12 +116,12 @@ function addSalesBySource(
     sourceMap.set(productId, { naver: ZERO_BUCKET(), coupang_seller: ZERO_BUCKET(), coupang_rocket: ZERO_BUCKET(), other: ZERO_BUCKET() });
   }
   const bucket = sourceMap.get(productId)![source];
-  if (daysAgo <= 7) bucket.d7 += qty;
-  if (daysAgo <= 30) bucket.d30 += qty;
-  if (daysAgo <= 40) bucket.d40 += qty;
-  if (daysAgo <= 60) bucket.d60 += qty;
-  if (daysAgo <= 90) bucket.d90 += qty;
-  if (daysAgo <= 120) bucket.d120 += qty;
+  if (daysAgo < 7) bucket.d7 += qty;
+  if (daysAgo < 30) bucket.d30 += qty;
+  if (daysAgo < 40) bucket.d40 += qty;
+  if (daysAgo < 60) bucket.d60 += qty;
+  if (daysAgo < 90) bucket.d90 += qty;
+  if (daysAgo < 120) bucket.d120 += qty;
 }
 
 export async function GET(request: NextRequest) {
