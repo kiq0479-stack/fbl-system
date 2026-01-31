@@ -304,19 +304,8 @@ export async function GET(request: NextRequest) {
         .range(from, to)
     );
 
-    // naver_orders 전체 건수 대비 매핑률 확인 (매핑률 낮으면 fallback 유지)
-    const { count: totalNaverOrders } = await getSupabase()
-      .from('naver_orders')
-      .select('*', { count: 'exact', head: true })
-      .gte('payment_date', date120dAgo.toISOString())
-      .not('status', 'in', '("CANCELED","RETURNED","CANCELED_BY_NOPAYMENT")');
-
-    const mappedRatio = (totalNaverOrders && totalNaverOrders > 0)
-      ? naverOrders.length / totalNaverOrders
-      : 0;
-
-    // 매핑률 50% 이상일 때만 naver_orders 사용, 아니면 fallback
-    if (naverOrders && naverOrders.length > 0 && mappedRatio >= 0.5) {
+    // product_id가 매핑된 주문이 1건 이상이면 naver_orders 사용
+    if (naverOrders && naverOrders.length > 0) {
       useNaverOrdersTable = true;
       naverOrders.forEach((order: any) => {
         const productId = order.product_id;
