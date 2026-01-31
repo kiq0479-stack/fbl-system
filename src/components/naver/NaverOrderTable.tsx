@@ -187,22 +187,22 @@ export default function NaverOrderTable({ from, to }: NaverOrderTableProps) {
       {/* 주문 테이블 */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[650px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">주문번호</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">주문일시</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">상품명</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">수량</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">결제금액</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase">상태</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">주문자</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-slate-600 uppercase hidden sm:table-cell">주문번호</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-slate-600 uppercase">주문일시</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-slate-600 uppercase">상품명</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold text-slate-600 uppercase">수량</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-right text-xs font-semibold text-slate-600 uppercase">결제금액</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-semibold text-slate-600 uppercase">상태</th>
+                <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-slate-600 uppercase hidden md:table-cell">주문자</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-2 sm:px-4 py-8 text-center text-slate-500">
                     조회된 주문이 없습니다.
                   </td>
                 </tr>
@@ -221,42 +221,42 @@ export default function NaverOrderTable({ from, to }: NaverOrderTableProps) {
                         className="hover:bg-slate-50 cursor-pointer"
                         onClick={() => setExpandedRow(isExpanded ? null : order.productOrderId)}
                       >
-                        <td className="px-4 py-3">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 hidden sm:table-cell">
                           <div className="text-sm font-mono text-slate-900">{order.productOrderId}</div>
                           <div className="text-xs text-slate-400">{order.orderId}</div>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="text-sm text-slate-900">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3">
+                          <div className="text-sm text-slate-900 whitespace-nowrap">
                             {new Date(order.orderDate).toLocaleDateString('ko-KR')}
                           </div>
                           <div className="text-xs text-slate-400">
                             {new Date(order.orderDate).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="text-sm text-slate-900 max-w-xs truncate" title={order.productName}>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3">
+                          <div className="text-sm text-slate-900 break-keep max-w-[200px] sm:max-w-xs" title={order.productName}>
                             {order.productName}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
                           <span className="text-sm font-medium text-slate-900">{order.quantity}</span>
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="text-sm font-medium text-slate-900">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right">
+                          <div className="text-sm font-medium text-slate-900 whitespace-nowrap">
                             {order.totalPaymentAmount.toLocaleString()}원
                           </div>
                           {order.expectedSettlementAmount && (
-                            <div className="text-xs text-slate-400">
+                            <div className="text-xs text-slate-400 whitespace-nowrap">
                               정산: {order.expectedSettlementAmount.toLocaleString()}원
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${status.color}`}>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${status.color}`}>
                             {status.label}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 hidden md:table-cell">
                           <div className="text-sm text-slate-900">{order.ordererName}</div>
                           <div className="text-xs text-slate-400">{order.paymentMeans}</div>
                         </td>

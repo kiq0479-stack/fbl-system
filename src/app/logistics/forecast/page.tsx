@@ -283,21 +283,21 @@ export default function ForecastPage() {
       {!loading && data && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-clip">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[800px]">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-slate-600 whitespace-nowrap">상품명</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-blue-50">총수량</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">7일</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">30일</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-yellow-50">60일</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">90일</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap">120일</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">60일필요</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">90일필요</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">120일필요</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-green-50">쿠팡40일</th>
-                  <th className="px-4 py-3 text-center font-semibold text-slate-600 whitespace-nowrap">위험</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-slate-600 whitespace-nowrap min-w-[120px]">상품명</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-blue-50">총수량</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap">7일</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap">30일</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-yellow-50">60일</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap">90일</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap">120일</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">60일필요</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">90일필요</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-orange-50">120일필요</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-green-50">쿠팡40일</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-center font-semibold text-slate-600 whitespace-nowrap">위험</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -306,7 +306,7 @@ export default function ForecastPage() {
                   return (
                     <Fragment key={item.product_id}>
                       <tr className={`transition-colors ${item.stockout_risk ? 'bg-red-50/50' : ''} ${isItemExpanded ? 'bg-blue-50/30' : ''}`}>
-                        <td className="px-3 py-3 whitespace-nowrap">
+                        <td className="px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => toggleItem(item.product_id)}
@@ -316,23 +316,23 @@ export default function ForecastPage() {
                             <span className={`inline-block transition-transform text-[10px] shrink-0 text-slate-400 ${isItemExpanded ? 'rotate-90' : ''}`}>
                               ▶
                             </span>
-                            <span className="font-medium text-slate-900">{item.name}</span>
+                            <span className="font-medium text-slate-900 break-keep">{item.name}</span>
                             {item.stockout_risk && (
                               <span className="inline-flex items-center px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-bold ml-1">위험</span>
                             )}
                           </button>
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold text-slate-900 bg-blue-50/50">{formatNumber(item.total_qty)}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_7d)}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_30d)}</td>
-                        <td className="px-4 py-3 text-right font-medium text-slate-700 bg-yellow-50/50">{formatNumber(item.sales_60d)}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_90d)}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{formatNumber(item.sales_120d)}</td>
-                        <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_60d, true)}</td>
-                        <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_90d, true)}</td>
-                        <td className="px-4 py-3 text-right bg-orange-50/50">{formatNumber(item.need_120d, true)}</td>
-                        <td className="px-4 py-3 text-right bg-green-50/50">{formatNumber(item.coupang_need_40d, true)}</td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-900 bg-blue-50/50">{formatNumber(item.total_qty)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right text-slate-600">{formatNumber(item.sales_7d)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right text-slate-600">{formatNumber(item.sales_30d)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right font-medium text-slate-700 bg-yellow-50/50">{formatNumber(item.sales_60d)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right text-slate-600">{formatNumber(item.sales_90d)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right text-slate-600">{formatNumber(item.sales_120d)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right bg-orange-50/50">{formatNumber(item.need_60d, true)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right bg-orange-50/50">{formatNumber(item.need_90d, true)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right bg-orange-50/50">{formatNumber(item.need_120d, true)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-right bg-green-50/50">{formatNumber(item.coupang_need_40d, true)}</td>
+                        <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
                           {item.stockout_risk && (
                             <span className="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-600 rounded-full font-bold text-xs">O</span>
                           )}
@@ -345,18 +345,18 @@ export default function ForecastPage() {
                         { key: 'rocket', label: '🚀 쿠팡로켓', cls: 'bg-purple-50', s: item.by_source.coupang_rocket },
                       ].map(ch => (
                         <tr key={`${item.product_id}-${ch.key}`} className={ch.cls}>
-                          <td className="pl-8 pr-3 py-1.5 text-xs whitespace-nowrap">{ch.label}</td>
-                          <td className="px-4 py-1.5 text-right text-xs bg-blue-50/50">-</td>
-                          <td className="px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d7)}</td>
-                          <td className="px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d30)}</td>
-                          <td className="px-4 py-1.5 text-right text-xs font-medium bg-yellow-50/50">{formatNumber(ch.s.d60)}</td>
-                          <td className="px-4 py-1.5 text-right text-xs">-</td>
-                          <td className="px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d120)}</td>
-                          <td className="px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>
-                          <td className="px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>
-                          <td className="px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>
-                          <td className="px-4 py-1.5 text-right text-xs bg-green-50/50">-</td>
-                          <td className="px-4 py-1.5 text-center text-xs">-</td>
+                          <td className="pl-6 sm:pl-8 pr-2 sm:pr-3 py-1.5 text-xs whitespace-nowrap">{ch.label}</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs bg-blue-50/50">-</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d7)}</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d30)}</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs font-medium bg-yellow-50/50">{formatNumber(ch.s.d60)}</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs">-</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d120)}</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs bg-green-50/50">-</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-center text-xs">-</td>
                         </tr>
                       ))}
                     </Fragment>

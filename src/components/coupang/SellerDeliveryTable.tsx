@@ -212,12 +212,12 @@ export default function SellerDeliveryTable({ from, to }: SellerDeliveryTablePro
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left min-w-[600px]">
             <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4">주문번호</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 hidden sm:table-cell">주문번호</th>
                 <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="px-3 sm:px-6 py-2 sm:py-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
                   onClick={() => handleSort('orderedAt')}
                 >
                   <div className="flex items-center gap-1">
@@ -226,7 +226,7 @@ export default function SellerDeliveryTable({ from, to }: SellerDeliveryTablePro
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="px-3 sm:px-6 py-2 sm:py-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
                   onClick={() => handleSort('productName')}
                 >
                   <div className="flex items-center gap-1">
@@ -235,7 +235,7 @@ export default function SellerDeliveryTable({ from, to }: SellerDeliveryTablePro
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="px-3 sm:px-6 py-2 sm:py-4 text-center cursor-pointer hover:bg-slate-100 transition-colors select-none"
                   onClick={() => handleSort('shippingCount')}
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -243,9 +243,9 @@ export default function SellerDeliveryTable({ from, to }: SellerDeliveryTablePro
                     <SortIcon field="shippingCount" />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-center">상태</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-center">상태</th>
                 <th 
-                  className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="px-3 sm:px-6 py-2 sm:py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
                   onClick={() => handleSort('orderPrice')}
                 >
                   <div className="flex items-center justify-end gap-1">
@@ -261,11 +261,11 @@ export default function SellerDeliveryTable({ from, to }: SellerDeliveryTablePro
                   <tr key={`${order.shipmentBoxId}-${itemIdx}`} className="hover:bg-slate-50 transition-colors">
                     {itemIdx === 0 ? (
                       <>
-                        <td className="px-6 py-4" rowSpan={order.orderItems.length}>
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 hidden sm:table-cell" rowSpan={order.orderItems.length}>
                           <div className="font-medium text-slate-900">{order.orderId}</div>
                           <div className="text-xs text-slate-400">Box: {order.shipmentBoxId}</div>
                         </td>
-                        <td className="px-6 py-4 text-slate-600" rowSpan={order.orderItems.length}>
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 text-slate-600 whitespace-nowrap" rowSpan={order.orderItems.length}>
                           {new Date(order.orderedAt).toLocaleString('ko-KR', {
                             year: 'numeric',
                             month: '2-digit',
@@ -276,8 +276,8 @@ export default function SellerDeliveryTable({ from, to }: SellerDeliveryTablePro
                         </td>
                       </>
                     ) : null}
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900 truncate max-w-xs" title={item.sellerProductName}>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4">
+                      <div className="font-medium text-slate-900 break-keep" title={item.sellerProductName}>
                         {item.sellerProductName}
                       </div>
                       {item.sellerProductItemName && (
@@ -285,17 +285,17 @@ export default function SellerDeliveryTable({ from, to }: SellerDeliveryTablePro
                       )}
                       <div className="text-xs text-slate-400">옵션ID: {item.vendorItemId}</div>
                     </td>
-                    <td className="px-6 py-4 text-center font-medium">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-center font-medium whitespace-nowrap">
                       {item.shippingCount}
                     </td>
                     {itemIdx === 0 ? (
-                      <td className="px-6 py-4 text-center" rowSpan={order.orderItems.length}>
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${STATUS_COLORS[order.status] || 'bg-slate-100 text-slate-800'}`}>
+                      <td className="px-3 sm:px-6 py-2 sm:py-4 text-center" rowSpan={order.orderItems.length}>
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${STATUS_COLORS[order.status] || 'bg-slate-100 text-slate-800'}`}>
                           {STATUS_LABELS[order.status] || order.status}
                         </span>
                       </td>
                     ) : null}
-                    <td className="px-6 py-4 text-right font-medium text-green-600">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-right font-medium text-green-600 whitespace-nowrap">
                       {item.orderPrice.toLocaleString()}원
                     </td>
                   </tr>

@@ -166,14 +166,14 @@ export default function SalesSummaryTable() {
       {/* 테이블 */}
       <div className="bg-white border border-slate-200 rounded-lg overflow-clip">
         <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[400px]">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-3 py-3 font-medium text-slate-600">상품명</th>
-              <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">7일</th>
-              <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">30일</th>
-              <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">60일</th>
-              <th className="text-right px-3 py-3 font-medium text-slate-600 whitespace-nowrap">120일</th>
+              <th className="text-left px-2 sm:px-3 py-2 sm:py-3 font-medium text-slate-600 min-w-[120px]">상품명</th>
+              <th className="text-right px-2 sm:px-3 py-2 sm:py-3 font-medium text-slate-600 whitespace-nowrap">7일</th>
+              <th className="text-right px-2 sm:px-3 py-2 sm:py-3 font-medium text-slate-600 whitespace-nowrap">30일</th>
+              <th className="text-right px-2 sm:px-3 py-2 sm:py-3 font-medium text-slate-600 whitespace-nowrap hidden sm:table-cell">60일</th>
+              <th className="text-right px-2 sm:px-3 py-2 sm:py-3 font-medium text-slate-600 whitespace-nowrap hidden sm:table-cell">120일</th>
             </tr>
           </thead>
           <tbody>
@@ -188,28 +188,28 @@ export default function SalesSummaryTable() {
                       isExpanded ? 'bg-slate-50' : ''
                     }`}
                   >
-                    <td className="px-3 py-3">
+                    <td className="px-2 sm:px-3 py-2 sm:py-3">
                       <button
                         type="button"
                         onClick={() => toggleExpand(group.key)}
-                        className="flex items-start gap-2 w-full text-left hover:opacity-80 active:opacity-60 transition-opacity"
+                        className="flex items-start gap-1.5 sm:gap-2 w-full text-left hover:opacity-80 active:opacity-60 transition-opacity"
                         aria-expanded={isExpanded}
                       >
                         <span className={`inline-block transition-transform text-xs mt-1 shrink-0 ${isExpanded ? 'rotate-90' : ''}`}>
                           ▶
                         </span>
                         <span>
-                          <span className="font-medium text-slate-900">{group.productName}</span>
+                          <span className="font-medium text-slate-900 break-keep">{group.productName}</span>
                           {group.sku && (
                             <span className="block text-xs text-slate-400 mt-0.5">SKU: {group.sku}</span>
                           )}
                         </span>
                       </button>
                     </td>
-                    <td className="px-3 py-3 text-right font-mono text-slate-700">{group.totalSales.d7.toLocaleString()}</td>
-                    <td className="px-3 py-3 text-right font-mono font-semibold text-slate-900">{group.totalSales.d30.toLocaleString()}</td>
-                    <td className="px-3 py-3 text-right font-mono text-slate-700">{group.totalSales.d60.toLocaleString()}</td>
-                    <td className="px-3 py-3 text-right font-mono text-slate-700">{group.totalSales.d120.toLocaleString()}</td>
+                    <td className="px-2 sm:px-3 py-2 sm:py-3 text-right font-mono text-slate-700 whitespace-nowrap">{group.totalSales.d7.toLocaleString()}</td>
+                    <td className="px-2 sm:px-3 py-2 sm:py-3 text-right font-mono font-semibold text-slate-900 whitespace-nowrap">{group.totalSales.d30.toLocaleString()}</td>
+                    <td className="px-2 sm:px-3 py-2 sm:py-3 text-right font-mono text-slate-700 whitespace-nowrap hidden sm:table-cell">{group.totalSales.d60.toLocaleString()}</td>
+                    <td className="px-2 sm:px-3 py-2 sm:py-3 text-right font-mono text-slate-700 whitespace-nowrap hidden sm:table-cell">{group.totalSales.d120.toLocaleString()}</td>
                   </tr>
 
                   {/* 펼침: 항상 3개 소스 행 표시 */}
@@ -220,15 +220,15 @@ export default function SalesSummaryTable() {
                         key={`${group.key}-${src.key}`}
                         className={`${src.bg} border-b border-slate-100`}
                       >
-                        <td className="px-3 py-2">
-                          <span className="pl-6 text-sm">
-                            {src.emoji} {src.label}
+                        <td className="px-2 sm:px-3 py-1.5 sm:py-2">
+                          <span className="pl-4 sm:pl-6 text-xs sm:text-sm">
+                            {src.emoji} <span className="hidden sm:inline">{src.label}</span><span className="sm:hidden">{src.label.split(' ')[0]}</span>
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-right font-mono text-slate-600">{sales.d7.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right font-mono font-medium text-slate-700">{sales.d30.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right font-mono text-slate-600">{sales.d60.toLocaleString()}</td>
-                        <td className="px-4 py-2 text-right font-mono text-slate-600">{sales.d120.toLocaleString()}</td>
+                        <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right font-mono text-slate-600 whitespace-nowrap">{sales.d7.toLocaleString()}</td>
+                        <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right font-mono font-medium text-slate-700 whitespace-nowrap">{sales.d30.toLocaleString()}</td>
+                        <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right font-mono text-slate-600 whitespace-nowrap hidden sm:table-cell">{sales.d60.toLocaleString()}</td>
+                        <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-right font-mono text-slate-600 whitespace-nowrap hidden sm:table-cell">{sales.d120.toLocaleString()}</td>
                       </tr>
                     );
                   })}

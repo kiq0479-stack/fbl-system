@@ -108,8 +108,8 @@ export default function CoupangPage() {
       )}
 
       {/* 탭 UI */}
-      <div className="border-b border-slate-200">
-        <nav className="flex gap-4">
+      <div className="border-b border-slate-200 overflow-x-auto">
+        <nav className="flex gap-2 sm:gap-4 min-w-max">
           <button
             onClick={() => setActiveTab('sales')}
             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${

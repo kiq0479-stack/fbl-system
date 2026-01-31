@@ -19,10 +19,10 @@ export default function ProductTable({ products, onEdit, onDelete, sortOrder, on
   };
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm bg-white">
-      <table className="w-full text-left text-sm">
+      <table className="w-full text-left text-sm min-w-[600px]">
         <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold text-xs border-b border-slate-200">
           <tr>
-            <th className="px-6 py-4">
+            <th className="px-3 sm:px-6 py-2 sm:py-4 min-w-[150px]">
                 <button 
                   onClick={handleSortClick}
                   className="inline-flex items-center gap-1 hover:text-slate-700 transition-colors"
@@ -41,18 +41,18 @@ export default function ProductTable({ products, onEdit, onDelete, sortOrder, on
                   </svg>
                 </button>
               </th>
-            <th className="px-6 py-4">바코드 (Code128)</th>
-            <th className="px-6 py-4 text-right">CBM</th>
-            <th className="px-6 py-4 text-right">단가 (USD)</th>
-            <th className="px-6 py-4 text-right">단가 (RMB)</th>
-            <th className="px-6 py-4 text-center">상태</th>
-            <th className="px-6 py-4 text-right">관리</th>
+            <th className="px-3 sm:px-6 py-2 sm:py-4 hidden md:table-cell">바코드 (Code128)</th>
+            <th className="px-3 sm:px-6 py-2 sm:py-4 text-right hidden sm:table-cell">CBM</th>
+            <th className="px-3 sm:px-6 py-2 sm:py-4 text-right">단가 (USD)</th>
+            <th className="px-3 sm:px-6 py-2 sm:py-4 text-right">단가 (RMB)</th>
+            <th className="px-3 sm:px-6 py-2 sm:py-4 text-center">상태</th>
+            <th className="px-3 sm:px-6 py-2 sm:py-4 text-right">관리</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {products.length === 0 ? (
             <tr>
-              <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+              <td colSpan={7} className="px-3 sm:px-6 py-12 text-center text-slate-400">
                 등록된 상품이 없습니다.
               </td>
             </tr>
@@ -62,14 +62,14 @@ export default function ProductTable({ products, onEdit, onDelete, sortOrder, on
                 key={product.id} 
                 className="hover:bg-slate-50/50 transition-colors group"
               >
-                <td className="px-6 py-4">
-                  <div className="font-medium text-slate-900">{product.name}</div>
+                <td className="px-3 sm:px-6 py-2 sm:py-4">
+                  <div className="font-medium text-slate-900 break-keep">{product.name}</div>
                   <div className="text-xs text-slate-400 font-mono mt-1">옵션ID: {product.sku}</div>
                   {product.external_sku && (
                     <div className="text-xs text-blue-500 font-mono">SKU: {product.external_sku}</div>
                   )}
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 hidden md:table-cell">
                   {product.barcode ? (
                     <Barcode 
                       value={product.barcode} 
@@ -84,16 +84,16 @@ export default function ProductTable({ products, onEdit, onDelete, sortOrder, on
                     <span className="text-slate-400 text-xs">-</span>
                   )}
                 </td>
-                <td className="px-6 py-4 text-right tabular-nums text-slate-600">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-right tabular-nums text-slate-600 hidden sm:table-cell">
                   {product.cbm?.toFixed(3) || '-'}
                 </td>
-                <td className="px-6 py-4 text-right tabular-nums font-medium text-slate-700">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-right tabular-nums font-medium text-slate-700 whitespace-nowrap">
                   {product.unit_price_usd ? `$${product.unit_price_usd.toFixed(2)}` : '-'}
                 </td>
-                <td className="px-6 py-4 text-right tabular-nums font-medium text-orange-600">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-right tabular-nums font-medium text-orange-600 whitespace-nowrap">
                   {product.unit_price_rmb ? `¥${product.unit_price_rmb.toFixed(2)}` : '-'}
                 </td>
-                <td className="px-6 py-4 text-center">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-center">
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       product.is_active
@@ -104,8 +104,8 @@ export default function ProductTable({ products, onEdit, onDelete, sortOrder, on
                     {product.is_active ? '활성' : '비활성'}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-right">
+                  <div className="flex items-center justify-end gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => onEdit(product)}
                       className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"

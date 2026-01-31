@@ -387,7 +387,7 @@ export default function InboundPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* 도착예정일 경과 알림 배너 */}
       {showAlert && overdueCount > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
@@ -481,24 +481,24 @@ export default function InboundPage() {
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-slate-200">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
+          <table className="min-w-full divide-y divide-slate-200 min-w-[700px]">
             <thead className="bg-slate-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">업체</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">입고요청번호</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">납품센터</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">도착예정일</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">팔레트</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">박스</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">총수량</th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">상태</th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">관리</th>
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">업체</th>
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">입고요청번호</th>
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden sm:table-cell">납품센터</th>
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">도착예정일</th>
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider hidden sm:table-cell">팔레트</th>
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider hidden sm:table-cell">박스</th>
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">총수량</th>
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">상태</th>
+                <th scope="col" className="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">관리</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={9} className="px-3 sm:px-6 py-12 text-center text-slate-500">
                     <div className="flex justify-center items-center">
                       <svg className="animate-spin h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -510,7 +510,7 @@ export default function InboundPage() {
                 </tr>
               ) : filteredInbounds.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={9} className="px-3 sm:px-6 py-12 text-center text-slate-500">
                     데이터가 없습니다.
                   </td>
                 </tr>
@@ -524,26 +524,26 @@ export default function InboundPage() {
                         : 'hover:bg-slate-50'
                     }`}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-slate-900">
                       {isOverdue(inbound) && (
                         <span className="inline-block w-2 h-2 bg-amber-500 rounded-full mr-2 animate-pulse" title="입고 확인 필요"></span>
                       )}
                       {inbound.vendor_name || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{inbound.request_number}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{inbound.warehouse_name}</td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${isOverdue(inbound) ? 'text-amber-700 font-medium' : 'text-slate-500'}`}>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm font-medium text-slate-900">{inbound.request_number}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-slate-500 hidden sm:table-cell">{inbound.warehouse_name}</td>
+                    <td className={`px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm ${isOverdue(inbound) ? 'text-amber-700 font-medium' : 'text-slate-500'}`}>
                       {inbound.expected_date}
                       {isOverdue(inbound) && <span className="ml-1 text-xs text-amber-600">(경과)</span>}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">{inbound.total_pallets?.toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900">{inbound.total_boxes?.toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-slate-900 font-medium">{inbound.total_quantity?.toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-right text-slate-900 hidden sm:table-cell">{inbound.total_pallets?.toLocaleString()}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-right text-slate-900 hidden sm:table-cell">{inbound.total_boxes?.toLocaleString()}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-sm text-right text-slate-900 font-medium">{inbound.total_quantity?.toLocaleString()}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-center">
                       {getStatusBadge(inbound.status)}
                     </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-center">
-                      <div className="flex flex-wrap justify-center gap-1 sm:gap-2">
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs text-center">
+                      <div className="flex flex-wrap justify-center gap-1">
                         <button 
                           onClick={() => { setSelectedInbound(inbound); setIsDetailOpen(true); }}
                           className="text-blue-600 hover:text-blue-900 px-1"

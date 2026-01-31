@@ -55,17 +55,17 @@ export default function OrderTable({ orders, loading, onEdit, onDelete }: OrderT
   return (
     <div className="w-full bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
+        <table className="w-full text-sm text-left min-w-[700px]">
           <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
             <tr>
-              <th className="px-6 py-4">발주번호</th>
-              <th className="px-6 py-4">공장</th>
-              <th className="px-6 py-4">상태</th>
-              <th className="px-6 py-4">선박명</th>
-              <th className="px-6 py-4 text-right">일정</th>
-              <th className="px-6 py-4 text-right">총 CBM</th>
-              <th className="px-6 py-4 text-right">총 금액</th>
-              <th className="px-6 py-4 text-center">수정</th>
+              <th className="px-3 sm:px-6 py-2 sm:py-4">발주번호</th>
+              <th className="px-3 sm:px-6 py-2 sm:py-4">공장</th>
+              <th className="px-3 sm:px-6 py-2 sm:py-4">상태</th>
+              <th className="px-3 sm:px-6 py-2 sm:py-4 hidden md:table-cell">선박명</th>
+              <th className="px-3 sm:px-6 py-2 sm:py-4 text-right">일정</th>
+              <th className="px-3 sm:px-6 py-2 sm:py-4 text-right hidden sm:table-cell">총 CBM</th>
+              <th className="px-3 sm:px-6 py-2 sm:py-4 text-right">총 금액</th>
+              <th className="px-3 sm:px-6 py-2 sm:py-4 text-center">수정</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
@@ -94,34 +94,34 @@ export default function OrderTable({ orders, loading, onEdit, onDelete }: OrderT
                 key={order.id} 
                 className={`transition-colors group cursor-pointer ${rowClassName}`}
               >
-                <td className="px-6 py-4 font-medium text-slate-900">
-                  <Link href={`/logistics/orders/${order.id}`} className="block w-full h-full text-blue-600 hover:text-blue-800 hover:underline">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 font-medium text-slate-900">
+                  <Link href={`/logistics/orders/${order.id}`} className="block w-full h-full text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap">
                     {order.order_number}
                   </Link>
                 </td>
-                <td className="px-6 py-4 text-slate-600">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-slate-600 whitespace-nowrap">
                   {supplierMap[order.supplier] || order.supplier}
                 </td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusMap[order.status]?.className || 'bg-slate-100 text-slate-800'}`}>
+                <td className="px-3 sm:px-6 py-2 sm:py-4">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap ${statusMap[order.status]?.className || 'bg-slate-100 text-slate-800'}`}>
                     {statusMap[order.status]?.label || order.status}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-slate-600">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-slate-600 hidden md:table-cell">
                   {order.ship_name || '-'}
                 </td>
-                <td className="px-6 py-4 text-right text-slate-600 text-xs">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-right text-slate-600 text-xs">
                   <div className="whitespace-nowrap"><span className="text-slate-400 mr-1">ETD</span>{order.etd || '-'}</div>
                   <div className="whitespace-nowrap"><span className="text-slate-400 mr-1">ETA</span>{order.eta || '-'}</div>
                 </td>
-                <td className="px-6 py-4 text-right text-slate-900 font-medium">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-right text-slate-900 font-medium whitespace-nowrap hidden sm:table-cell">
                   {order.total_cbm ? `${order.total_cbm.toLocaleString()} CBM` : '-'}
                 </td>
-                <td className="px-6 py-4 text-right text-xs">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-right text-xs">
                   <div className="whitespace-nowrap font-medium text-slate-900">{order.total_amount_rmb ? `¥${order.total_amount_rmb.toLocaleString()}` : '-'}</div>
                   <div className="whitespace-nowrap text-slate-500">{order.total_amount_usd ? `$${order.total_amount_usd.toLocaleString()}` : '-'}</div>
                 </td>
-                <td className="px-6 py-4 text-center">
+                <td className="px-3 sm:px-6 py-2 sm:py-4 text-center">
                   <div className="flex justify-center gap-1">
                     <button
                       onClick={(e) => {

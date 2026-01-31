@@ -133,18 +133,18 @@ export default function RevenueTable({ from, to }: RevenueTableProps) {
           <span className="text-sm text-slate-600">총 <strong className="text-slate-900">{revenues.length}</strong>건</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left min-w-[750px]">
             <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4">주문번호</th>
-                <th className="px-6 py-4">판매일</th>
-                <th className="px-6 py-4">매출인식일</th>
-                <th className="px-6 py-4">정산예정일</th>
-                <th className="px-6 py-4">상품</th>
-                <th className="px-6 py-4 text-center">수량</th>
-                <th className="px-6 py-4 text-right">판매가</th>
-                <th className="px-6 py-4 text-right">수수료</th>
-                <th className="px-6 py-4 text-right">정산금액</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4">주문번호</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 hidden md:table-cell">판매일</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 hidden md:table-cell">매출인식일</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 hidden lg:table-cell">정산예정일</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4">상품</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-center">수량</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-right">판매가</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-right hidden sm:table-cell">수수료</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-right">정산금액</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -153,7 +153,7 @@ export default function RevenueTable({ from, to }: RevenueTableProps) {
                   <tr key={`${rev.orderId}-${itemIdx}`} className="hover:bg-slate-50 transition-colors">
                     {itemIdx === 0 ? (
                       <>
-                        <td className="px-6 py-4" rowSpan={rev.items.length}>
+                        <td className="px-3 sm:px-6 py-2 sm:py-4" rowSpan={rev.items.length}>
                           <div className="font-medium text-slate-900">{rev.orderId}</div>
                           <div className="text-xs text-slate-400 mt-1">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -165,19 +165,19 @@ export default function RevenueTable({ from, to }: RevenueTableProps) {
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-600" rowSpan={rev.items.length}>
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 text-slate-600 whitespace-nowrap hidden md:table-cell" rowSpan={rev.items.length}>
                           {rev.saleDate}
                         </td>
-                        <td className="px-6 py-4 text-slate-600" rowSpan={rev.items.length}>
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 text-slate-600 whitespace-nowrap hidden md:table-cell" rowSpan={rev.items.length}>
                           {rev.recognitionDate}
                         </td>
-                        <td className="px-6 py-4 text-slate-600" rowSpan={rev.items.length}>
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 text-slate-600 whitespace-nowrap hidden lg:table-cell" rowSpan={rev.items.length}>
                           {rev.settlementDate}
                         </td>
                       </>
                     ) : null}
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900 truncate max-w-xs" title={item.productName}>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4">
+                      <div className="font-medium text-slate-900 break-keep" title={item.productName}>
                         {item.productName}
                       </div>
                       {item.vendorItemName && (
@@ -186,16 +186,16 @@ export default function RevenueTable({ from, to }: RevenueTableProps) {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-center font-medium">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-center font-medium whitespace-nowrap">
                       {item.quantity}
                     </td>
-                    <td className="px-6 py-4 text-right font-medium text-slate-900">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-right font-medium text-slate-900 whitespace-nowrap">
                       {(item.saleAmount || item.salePrice * item.quantity).toLocaleString()}원
                     </td>
-                    <td className="px-6 py-4 text-right text-orange-500">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-right text-orange-500 whitespace-nowrap hidden sm:table-cell">
                       {(item.serviceFee + (item.serviceFeeVat || 0)).toLocaleString()}원
                     </td>
-                    <td className="px-6 py-4 text-right font-medium text-green-600">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-right font-medium text-green-600 whitespace-nowrap">
                       {item.settlementAmount.toLocaleString()}원
                     </td>
                   </tr>

@@ -167,25 +167,24 @@ export default function StockSummaryTable() {
 
       {/* 테이블 */}
       <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm bg-white">
-        <table className="w-full text-left text-sm">
+        <table className="w-full text-left text-sm min-w-[600px]">
           <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold text-xs border-b border-slate-200">
             <tr>
-              <th className="px-6 py-4">상품명</th>
-              <th className="px-6 py-4 text-right">쿠팡물류 총합</th>
-              <th className="px-6 py-4 text-right">판매가능재고</th>
-              <th className="px-6 py-4 text-right">입고예정</th>
-              <th className="px-6 py-4 text-right">
-                <div>지난 7일</div>
-                <div className="text-[10px] font-normal normal-case text-slate-400">(취소건 반영X)</div>
+              <th className="px-3 sm:px-6 py-2 sm:py-4 min-w-[120px]">상품명</th>
+              <th className="px-2 sm:px-6 py-2 sm:py-4 text-right">총합</th>
+              <th className="px-2 sm:px-6 py-2 sm:py-4 text-right hidden sm:table-cell">판매가능</th>
+              <th className="px-2 sm:px-6 py-2 sm:py-4 text-right hidden sm:table-cell">입고예정</th>
+              <th className="px-2 sm:px-6 py-2 sm:py-4 text-right">
+                <div>7일</div>
               </th>
-              <th className="px-6 py-4 text-right">지난 30일</th>
-              <th className="px-6 py-4 text-center">상태</th>
+              <th className="px-2 sm:px-6 py-2 sm:py-4 text-right">30일</th>
+              <th className="px-2 sm:px-6 py-2 sm:py-4 text-center">상태</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                <td colSpan={7} className="px-3 sm:px-6 py-12 text-center text-slate-400">
                   데이터가 없습니다.
                 </td>
               </tr>
@@ -212,31 +211,31 @@ export default function StockSummaryTable() {
 
                 return (
                   <tr key={item.vendorItemId} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900 max-w-md truncate" title={item.productName}>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4">
+                      <div className="font-medium text-slate-900 break-keep" title={item.productName}>
                         {item.productName}
                       </div>
                       {item.externalSkuId && (
                         <div className="text-xs text-slate-400 mt-0.5">SKU: {item.externalSkuId}</div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right tabular-nums font-medium text-slate-900">
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-right tabular-nums font-medium text-slate-900 whitespace-nowrap">
                       {item.totalStock.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 text-right tabular-nums text-slate-600">
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-right tabular-nums text-slate-600 whitespace-nowrap hidden sm:table-cell">
                       {item.availableStock.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 text-right tabular-nums text-slate-400">
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-right tabular-nums text-slate-400 whitespace-nowrap hidden sm:table-cell">
                       {item.incomingStock > 0 ? item.incomingStock.toLocaleString() : '-'}
                     </td>
-                    <td className="px-6 py-4 text-right tabular-nums text-blue-600 font-medium">
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-right tabular-nums text-blue-600 font-medium whitespace-nowrap">
                       {item.sales7d > 0 ? item.sales7d.toLocaleString() : '-'}
                     </td>
-                    <td className="px-6 py-4 text-right tabular-nums text-purple-600 font-medium">
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-right tabular-nums text-purple-600 font-medium whitespace-nowrap">
                       {item.sales30d > 0 ? item.sales30d.toLocaleString() : '-'}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-center">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
                         {statusText}
                       </span>
                     </td>

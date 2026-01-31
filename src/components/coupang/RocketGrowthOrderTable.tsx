@@ -211,12 +211,12 @@ export default function RocketGrowthOrderTable({ from, to }: RocketGrowthOrderTa
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left min-w-[600px]">
             <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4">주문번호</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 hidden sm:table-cell">주문번호</th>
                 <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="px-3 sm:px-6 py-2 sm:py-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
                   onClick={() => handleSort('paidAt')}
                 >
                   <div className="flex items-center gap-1">
@@ -225,7 +225,7 @@ export default function RocketGrowthOrderTable({ from, to }: RocketGrowthOrderTa
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="px-3 sm:px-6 py-2 sm:py-4 cursor-pointer hover:bg-slate-100 transition-colors select-none"
                   onClick={() => handleSort('productName')}
                 >
                   <div className="flex items-center gap-1">
@@ -234,7 +234,7 @@ export default function RocketGrowthOrderTable({ from, to }: RocketGrowthOrderTa
                   </div>
                 </th>
                 <th 
-                  className="px-6 py-4 text-center cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="px-3 sm:px-6 py-2 sm:py-4 text-center cursor-pointer hover:bg-slate-100 transition-colors select-none"
                   onClick={() => handleSort('salesQuantity')}
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -242,9 +242,9 @@ export default function RocketGrowthOrderTable({ from, to }: RocketGrowthOrderTa
                     <SortIcon field="salesQuantity" />
                   </div>
                 </th>
-                <th className="px-6 py-4 text-right">단가</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-right hidden sm:table-cell">단가</th>
                 <th 
-                  className="px-6 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  className="px-3 sm:px-6 py-2 sm:py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors select-none"
                   onClick={() => handleSort('unitSalesPrice')}
                 >
                   <div className="flex items-center justify-end gap-1">
@@ -260,10 +260,10 @@ export default function RocketGrowthOrderTable({ from, to }: RocketGrowthOrderTa
                   <tr key={`${order.orderId}-${itemIdx}`} className="hover:bg-slate-50 transition-colors">
                     {itemIdx === 0 ? (
                       <>
-                        <td className="px-6 py-4" rowSpan={order.orderItems.length}>
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 hidden sm:table-cell" rowSpan={order.orderItems.length}>
                           <div className="font-medium text-slate-900">{order.orderId}</div>
                         </td>
-                        <td className="px-6 py-4 text-slate-600" rowSpan={order.orderItems.length}>
+                        <td className="px-3 sm:px-6 py-2 sm:py-4 text-slate-600 whitespace-nowrap" rowSpan={order.orderItems.length}>
                           {new Date(order.paidAt).toLocaleString('ko-KR', {
                             year: 'numeric',
                             month: '2-digit',
@@ -274,19 +274,19 @@ export default function RocketGrowthOrderTable({ from, to }: RocketGrowthOrderTa
                         </td>
                       </>
                     ) : null}
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900 truncate max-w-xs" title={item.productName}>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4">
+                      <div className="font-medium text-slate-900 break-keep" title={item.productName}>
                         {item.productName}
                       </div>
                       <div className="text-xs text-slate-400">옵션ID: {item.vendorItemId}</div>
                     </td>
-                    <td className="px-6 py-4 text-center font-medium">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-center font-medium whitespace-nowrap">
                       {item.salesQuantity}
                     </td>
-                    <td className="px-6 py-4 text-right text-slate-600">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-right text-slate-600 whitespace-nowrap hidden sm:table-cell">
                       {parseFloat(item.unitSalesPrice).toLocaleString()}원
                     </td>
-                    <td className="px-6 py-4 text-right font-medium text-green-600">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-right font-medium text-green-600 whitespace-nowrap">
                       {(parseFloat(item.unitSalesPrice) * item.salesQuantity).toLocaleString()}원
                     </td>
                   </tr>

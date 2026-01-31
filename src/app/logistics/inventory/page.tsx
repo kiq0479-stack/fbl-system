@@ -655,41 +655,41 @@ export default function InventoryPage() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
         {activeTab === 'coupang_inbound' ? (
           // 쿠팡 입고중 테이블
-          <table className="w-full">
+          <table className="w-full min-w-[700px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">상품명</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">옵션ID</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">수량</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">박스</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">파레트</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">입고요청번호</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">도착예정일</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">상품명</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">옵션ID</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">수량</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">박스</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">파레트</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">입고요청번호</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">도착예정일</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">로딩중...</td>
+                  <td colSpan={7} className="px-3 sm:px-6 py-12 text-center text-slate-400">로딩중...</td>
                 </tr>
               ) : sortedInboundItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-3 sm:px-6 py-12 text-center text-slate-400">
                     입고중인 상품이 없습니다
                   </td>
                 </tr>
               ) : (
                 sortedInboundItems.map((item, idx) => (
                   <tr key={idx} className="hover:bg-orange-50/50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-slate-900">{item.product_name}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500 font-mono">{item.sku}</td>
-                    <td className="px-6 py-4 text-sm text-right font-semibold text-orange-600">{item.quantity.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-sm text-right text-slate-500">{item.box_quantity}</td>
-                    <td className="px-6 py-4 text-sm text-center">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm font-medium text-slate-900 break-keep">{item.product_name}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-slate-500 font-mono hidden sm:table-cell">{item.sku}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-right font-semibold text-orange-600">{item.quantity.toLocaleString()}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-right text-slate-500">{item.box_quantity}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-center">
                       <span className="px-2 py-1 bg-slate-100 rounded text-slate-600">P{item.pallet_number}</span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{item.request_number}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{item.expected_date}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-slate-500 hidden sm:table-cell">{item.request_number}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-slate-500">{item.expected_date}</td>
                   </tr>
                 ))
               )}
@@ -697,46 +697,46 @@ export default function InventoryPage() {
           </table>
         ) : locationFilter === 'all' ? (
           // 전체 뷰: SKU별 합산 테이블
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap min-w-[120px]">
                   {activeTab === 'product' ? '상품명' : '부자재명'}
                 </th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">창고</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">쿠팡</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-orange-600 uppercase tracking-wider whitespace-nowrap">입고중</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-blue-600 uppercase tracking-wider whitespace-nowrap">발주요청</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-purple-600 uppercase tracking-wider whitespace-nowrap">선적중</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">합계</th>
+                <th className="px-2 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">창고</th>
+                <th className="px-2 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">쿠팡</th>
+                <th className="px-2 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-orange-600 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">입고중</th>
+                <th className="px-2 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-blue-600 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">발주요청</th>
+                <th className="px-2 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-purple-600 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">선적중</th>
+                <th className="px-2 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">합계</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">로딩중...</td>
+                  <td colSpan={7} className="px-3 sm:px-6 py-12 text-center text-slate-400">로딩중...</td>
                 </tr>
               ) : sortedAggregated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">재고 데이터가 없습니다</td>
+                  <td colSpan={7} className="px-3 sm:px-6 py-12 text-center text-slate-400">재고 데이터가 없습니다</td>
                 </tr>
               ) : (
                 sortedAggregated.map((item) => (
                   <tr key={item.sku} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm font-medium">
                       <button
                         onClick={() => setSelectedProductSku(item.sku)}
-                        className="text-slate-900 hover:underline text-left"
+                        className="text-slate-900 hover:underline text-left break-keep"
                       >
                         {item.name}
                       </button>
                     </td>
-                    <td className="px-6 py-4 text-sm text-right text-slate-600">{item.warehouse > 0 ? item.warehouse.toLocaleString() : '-'}</td>
-                    <td className="px-6 py-4 text-sm text-right text-slate-600">{item.coupang > 0 ? item.coupang.toLocaleString() : '-'}</td>
-                    <td className="px-6 py-4 text-sm text-right font-medium text-orange-600">{item.coupang_inbound > 0 ? item.coupang_inbound.toLocaleString() : '-'}</td>
-                    <td className="px-6 py-4 text-sm text-right font-medium text-blue-600">{item.order_requested > 0 ? item.order_requested.toLocaleString() : '-'}</td>
-                    <td className="px-6 py-4 text-sm text-right font-medium text-purple-600">{item.in_transit > 0 ? item.in_transit.toLocaleString() : '-'}</td>
-                    <td className="px-6 py-4 text-sm text-right font-bold text-slate-900">{item.total.toLocaleString()}</td>
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-right text-slate-600 whitespace-nowrap">{item.warehouse > 0 ? item.warehouse.toLocaleString() : '-'}</td>
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-right text-slate-600 whitespace-nowrap">{item.coupang > 0 ? item.coupang.toLocaleString() : '-'}</td>
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-right font-medium text-orange-600 whitespace-nowrap hidden sm:table-cell">{item.coupang_inbound > 0 ? item.coupang_inbound.toLocaleString() : '-'}</td>
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-right font-medium text-blue-600 whitespace-nowrap hidden sm:table-cell">{item.order_requested > 0 ? item.order_requested.toLocaleString() : '-'}</td>
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-right font-medium text-purple-600 whitespace-nowrap hidden sm:table-cell">{item.in_transit > 0 ? item.in_transit.toLocaleString() : '-'}</td>
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-right font-bold text-slate-900 whitespace-nowrap">{item.total.toLocaleString()}</td>
                   </tr>
                 ))
               )}
@@ -744,37 +744,37 @@ export default function InventoryPage() {
           </table>
         ) : (
           // 특정 위치 필터: 기존 테이블
-          <table className="w-full">
+          <table className="w-full min-w-[500px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[120px]">
                   {activeTab === 'product' ? '상품명' : '부자재명'}
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">옵션ID</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">수량</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">옵션ID</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">수량</th>
                 {locationFilter === 'warehouse' && activeTab === 'product' && (
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">파렛트</th>
+                  <th className="px-3 sm:px-6 py-2 sm:py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">파렛트</th>
                 )}
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">랙 위치</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">최종 수정</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">랙 위치</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">최종 수정</th>
                 {locationFilter === 'warehouse' && activeTab === 'product' && (
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">수정</th>
+                  <th className="px-3 sm:px-6 py-2 sm:py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">수정</th>
                 )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={locationFilter === 'warehouse' && activeTab === 'product' ? 7 : 5} className="px-6 py-12 text-center text-slate-400">로딩중...</td>
+                  <td colSpan={locationFilter === 'warehouse' && activeTab === 'product' ? 7 : 5} className="px-3 sm:px-6 py-12 text-center text-slate-400">로딩중...</td>
                 </tr>
               ) : sortedInventory.length === 0 ? (
                 <tr>
-                  <td colSpan={locationFilter === 'warehouse' && activeTab === 'product' ? 7 : 5} className="px-6 py-12 text-center text-slate-400">재고 데이터가 없습니다</td>
+                  <td colSpan={locationFilter === 'warehouse' && activeTab === 'product' ? 7 : 5} className="px-3 sm:px-6 py-12 text-center text-slate-400">재고 데이터가 없습니다</td>
                 </tr>
               ) : (
                 sortedInventory.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm font-medium">
                       <button
                         onClick={() => {
                           if (activeTab === 'product' && item.products?.sku) {
@@ -783,15 +783,15 @@ export default function InventoryPage() {
                             setSelectedSupplySku(item.supplies.sku);
                           }
                         }}
-                        className="text-slate-900 hover:underline text-left"
+                        className="text-slate-900 hover:underline text-left break-keep"
                       >
                         {getName(item)}
                       </button>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 font-mono">{getSku(item)}</td>
-                    <td className="px-6 py-4 text-sm text-right font-semibold text-slate-900">{item.quantity.toLocaleString()}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-slate-500 font-mono hidden sm:table-cell">{getSku(item)}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-right font-semibold text-slate-900 whitespace-nowrap">{item.quantity.toLocaleString()}</td>
                     {locationFilter === 'warehouse' && activeTab === 'product' && (
-                      <td className="px-6 py-4 text-sm text-center text-slate-500">
+                      <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-center text-slate-500 whitespace-nowrap">
                         {item.pallet_count !== null ? (
                           <span className="text-blue-600 font-medium">
                             {item.pallet_count}P {item.extra_boxes ? `+ ${item.extra_boxes}` : ''}
@@ -799,10 +799,10 @@ export default function InventoryPage() {
                         ) : '-'}
                       </td>
                     )}
-                    <td className="px-6 py-4 text-sm text-slate-500 font-mono">{item.rack_position || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-slate-400">{new Date(item.updated_at).toLocaleDateString('ko-KR')}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-slate-500 font-mono whitespace-nowrap">{item.rack_position || '-'}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-slate-400 whitespace-nowrap hidden sm:table-cell">{new Date(item.updated_at).toLocaleDateString('ko-KR')}</td>
                     {locationFilter === 'warehouse' && activeTab === 'product' && (
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-3 sm:px-6 py-2 sm:py-4 text-center">
                         <button
                           onClick={() => setEditingWarehouseItem(item)}
                           className="px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
