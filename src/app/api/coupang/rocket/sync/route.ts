@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRocketGrowthOrders, getCoupangAccounts } from '@/lib/coupang';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+// Vercel Pro: allow up to 60s execution
+export const maxDuration = 60;
+
 // Lazy 초기화 (빌드 타임에 throw 방지)
 let _supabase: SupabaseClient | null = null;
 function getSupabase() {

@@ -15,9 +15,12 @@ function getSupabase() {
   return _supabase;
 }
 
+// Vercel Pro: allow up to 60s execution
+export const maxDuration = 60;
+
 // Priority order: ACCEPT captures new orders, FINAL_DELIVERY confirms them
 const PRIORITY_STATUSES = ['ACCEPT', 'FINAL_DELIVERY', 'INSTRUCT', 'DEPARTURE', 'DELIVERING'];
-const MAX_RUNTIME_MS = 8000;
+const MAX_RUNTIME_MS = 50000; // 50s safety margin for Vercel Pro 60s limit
 
 function getKSTDateString(daysAgo: number): string {
   const now = new Date();

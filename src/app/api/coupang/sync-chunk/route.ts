@@ -15,8 +15,11 @@ function getSupabase() {
   return _supabase;
 }
 
+// Vercel Pro: allow up to 60s execution
+export const maxDuration = 60;
+
 const ORDER_STATUSES = ['ACCEPT', 'INSTRUCT', 'DEPARTURE', 'DELIVERING', 'FINAL_DELIVERY'];
-const MAX_RUNTIME_MS = 8000; // 8s safety margin for 10s Vercel timeout
+const MAX_RUNTIME_MS = 50000; // 50s safety margin for Vercel Pro 60s limit
 
 /**
  * Lightweight sync endpoint — syncs ONE day of Coupang orders.
