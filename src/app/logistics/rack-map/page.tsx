@@ -43,9 +43,9 @@ const HARDCODED_PRODUCTS: ProductDef[] = [
   { key: '그립',  full: '스마트 그립톡',      brand: '쉴트', bg: '#2dd4bf', fg: '#fff', type: 'product' },
   { key: '폰케',  full: '폰케이스',           brand: '쉴트', bg: '#99f6e4', fg: '#134e4a', type: 'product' },
   { key: '키링',  full: '키링류',             brand: '쉴트', bg: '#5eead4', fg: '#134e4a', type: 'product' },
-  // 기타
-  { key: '기타',  full: '기타 물품',          brand: '기타', bg: '#cbd5e1', fg: '#475569', type: 'product' },
-  { key: '부자재', full: '부자재',            brand: '기타', bg: '#d8b4fe', fg: '#581c87', type: 'supply' },
+  // 부자재
+  { key: '기타',  full: '기타 물품',          brand: '부자재', bg: '#cbd5e1', fg: '#475569', type: 'product' },
+  { key: '부자재', full: '부자재',            brand: '부자재', bg: '#d8b4fe', fg: '#581c87', type: 'supply' },
 ];
 
 const HARDCODED_MAP = Object.fromEntries(HARDCODED_PRODUCTS.map(p => [p.key, p]));
@@ -87,10 +87,10 @@ function getAutoColor(category: string, sku: string): { bg: string; fg: string }
 function getP(key: string, dynamicMap: Map<string, ProductDef>): ProductDef {
   if (HARDCODED_MAP[key]) return HARDCODED_MAP[key];
   if (dynamicMap.has(key)) return dynamicMap.get(key)!;
-  return { key, full: key, brand: '기타', bg: '#e5e7eb', fg: '#374151', type: 'product' };
+  return { key, full: key, brand: '부자재', bg: '#e5e7eb', fg: '#374151', type: 'product' };
 }
 
-const BRAND_ICONS: Record<string, string> = { '키들': '🧸', '쉴트': '🛡️', '기타': '📦' };
+const BRAND_ICONS: Record<string, string> = { '키들': '🧸', '쉴트': '🛡️', '부자재': '📦' };
 
 // ============================================================
 // 엑셀 레이아웃 — 슬롯당 복수 아이템 지원 (SlotItem[][])
@@ -164,27 +164,35 @@ function deepClone<T>(obj: T): T { return JSON.parse(JSON.stringify(obj)); }
 type ProductSummary = { key: string; full: string; count: number; bg: string; fg: string };
 type BrandSummary = { brand: string; icon: string; total: number; products: ProductSummary[] };
 
-function getBrandSummary(sections: Section[], dynamicMap: Map<string, ProductDef>): BrandSummary[] {
-  const map = new Map<string, number>();
+function getBrandSummary(sections: Section[], dynamicMap: Map<string, ProductDef>, dbProducts: DbProduct[]): BrandSummary[] {
+  // 1. 랙에 배치된 상품 카운트
+  const rackMap = new Map<string, number>();
   sections.forEach(sec => sec.rows.forEach(row => {
     row.slots.forEach(slot => {
-      slot.forEach(item => { if (item.key) map.set(item.key, (map.get(item.key) || 0) + item.qty); });
+      slot.forEach(item => { if (item.key) rackMap.set(item.key, (rackMap.get(item.key) || 0) + item.qty); });
     });
   }));
 
-  const brandMap = new Map<string, ProductSummary[]>();
-  const brandSet = new Set<string>();
+  // 2. DB 재고 상품도 포함 (랙에 없는 것도)
+  const allKeys = new Map<string, number>();
+  rackMap.forEach((count, key) => allKeys.set(key, count));
+  dbProducts.forEach(item => {
+    if (!allKeys.has(item.sku)) {
+      allKeys.set(item.sku, item.quantity);
+    }
+  });
 
-  map.forEach((count, key) => {
+  const brandMap = new Map<string, ProductSummary[]>();
+
+  allKeys.forEach((count, key) => {
     const p = getP(key, dynamicMap);
-    brandSet.add(p.brand);
     if (!brandMap.has(p.brand)) brandMap.set(p.brand, []);
     brandMap.get(p.brand)!.push({ key, full: p.full, count, bg: p.bg, fg: p.fg });
   });
 
   brandMap.forEach(products => products.sort((a, b) => b.count - a.count));
 
-  const brandOrder = ['키들', '쉴트', '기타'];
+  const brandOrder = ['키들', '쉴트', '부자재'];
   
   return brandOrder.map(brand => ({
     brand,
@@ -203,7 +211,7 @@ function inferBrand(name: string, category: string): string {
   if (['캣휠', '스팽글', '그립톡', '폰케이스', '키링'].some(k => n.includes(k))) return '쉴트';
   if (category === '키즈가구' || category === '안전용품') return '키들';
   if (category === '펫용품' || category === '모바일액세서리') return '쉴트';
-  return '기타';
+  return '부자재';
 }
 
 // ============================================================
@@ -297,7 +305,7 @@ export default function RackMapPage() {
       // 하드코딩에 이미 있으면 건너뛰기 (하드코딩 우선)
       if (HARDCODED_MAP[item.sku]) continue;
 
-      const brand = item.type === 'supply' ? '기타' : inferBrand(item.name, item.category);
+      const brand = item.type === 'supply' ? '부자재' : inferBrand(item.name, item.category);
       const color = getAutoColor(item.category, item.sku);
       map.set(item.sku, {
         key: item.sku,
@@ -322,7 +330,7 @@ export default function RackMapPage() {
       const brand = existing
         ? existing.brand
         : item.type === 'supply'
-          ? '기타'
+          ? '부자재'
           : inferBrand(item.name, item.category);
 
       if (!groups.has(brand)) groups.set(brand, []);
@@ -345,7 +353,7 @@ export default function RackMapPage() {
     // ❌ 하드코딩 fallback 제거 — DB 재고 있는 상품만 표시
 
     // 브랜드 순서: 키들 → 쉴트 → 기타
-    const order = ['키들', '쉴트', '기타'];
+    const order = ['키들', '쉴트', '부자재'];
     const sorted = [...groups.entries()].sort((a, b) => {
       const ai = order.indexOf(a[0]);
       const bi = order.indexOf(b[0]);
@@ -355,7 +363,7 @@ export default function RackMapPage() {
     return sorted;
   }, [dbProducts, dynamicProductMap]);
 
-  const brandSummary = getBrandSummary(sections, dynamicProductMap);
+  const brandSummary = getBrandSummary(sections, dynamicProductMap, dbProducts);
   const totalP = brandSummary.reduce((s, b) => s + b.total, 0);
   const totalSlots = sections.reduce((s, sec) => s + sec.rows.reduce((s2, r) => s2 + r.slots.length, 0), 0);
 
