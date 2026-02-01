@@ -445,26 +445,63 @@ export default function InventoryPage() {
   // 입고중 총 수량
   const totalInboundQty = inboundItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // 쿠팡 재고 동기화
+  // 쿠팡 재고 동기화 (클라이언트 사이드)
   const handleSyncCoupangInventory = async () => {
-    if (!confirm('쿠팡 로켓그로스 재고를 동기화합니다.\n계속하시겠습니까?')) {
-      return;
-    }
-    
     setSyncingCoupang(true);
     try {
-      const res = await fetch('/api/inventory/sync-coupang', {
-        method: 'POST',
-      });
-      
-      const data = await res.json();
-      
-      if (res.ok) {
-        alert(data.message);
-        fetchInventory();
-      } else {
-        alert(`동기화 실패: ${data.error}`);
+      // 1. DB에서 상품 목록 + 기존 쿠팡 재고 가져오기
+      const [{ data: products }, { data: existingInv }] = await Promise.all([
+        supabase.from('products').select('id, sku, name'),
+        supabase.from('inventory').select('id, product_id, quantity').eq('location', 'coupang'),
+      ]);
+
+      if (!products?.length) {
+        alert('등록된 상품이 없습니다.');
+        return;
       }
+
+      const existingMap = new Map<string, { id: string; quantity: number }>();
+      for (const inv of (existingInv || []) as any[]) {
+        existingMap.set(inv.product_id, { id: inv.id, quantity: inv.quantity });
+      }
+
+      // 2. 쿠팡 API 프록시로 10개씩 배치 조회
+      const skuList = products.map(p => (p as any).sku).filter(Boolean) as string[];
+      const BATCH = 8;
+      const inventoryMap: Record<string, number> = {};
+
+      for (let i = 0; i < skuList.length; i += BATCH) {
+        const batch = skuList.slice(i, i + BATCH);
+        const res = await fetch(`/api/inventory/sync-coupang?skus=${batch.join(',')}`);
+        if (res.ok) {
+          const data = await res.json();
+          Object.assign(inventoryMap, data.inventory || {});
+        }
+      }
+
+      // 3. DB 업데이트
+      let added = 0, updated = 0;
+      for (const product of products as any[]) {
+        const sku = product.sku;
+        const coupangQty = inventoryMap[sku] || 0;
+        const existing = existingMap.get(product.id);
+
+        if (existing) {
+          if (existing.quantity !== coupangQty) {
+            await (supabase.from('inventory') as any)
+              .update({ quantity: coupangQty, updated_at: new Date().toISOString() })
+              .eq('id', existing.id);
+            updated++;
+          }
+        } else if (coupangQty > 0) {
+          await (supabase.from('inventory') as any)
+            .insert({ product_id: product.id, location: 'coupang', quantity: coupangQty });
+          added++;
+        }
+      }
+
+      alert(`동기화 완료: 추가 ${added}개, 업데이트 ${updated}개`);
+      fetchInventory();
     } catch (error) {
       console.error('Sync error:', error);
       alert('동기화 중 오류가 발생했습니다.');
