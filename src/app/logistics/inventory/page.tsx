@@ -97,7 +97,30 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
+  // 숨기기
+  const [hiddenProducts, setHiddenProducts] = useState<Set<string>>(new Set());
+  const [showHidden, setShowHidden] = useState(false);
+  const [showHideButtons, setShowHideButtons] = useState(false);
+  
   const supabase = createClient();
+
+  // localStorage에서 숨긴 상품 복원
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('fbl-inventory-hidden');
+      if (saved) setHiddenProducts(new Set(JSON.parse(saved)));
+    } catch {}
+  }, []);
+
+  const toggleHide = (sku: string) => {
+    setHiddenProducts(prev => {
+      const next = new Set(prev);
+      if (next.has(sku)) next.delete(sku);
+      else next.add(sku);
+      localStorage.setItem('fbl-inventory-hidden', JSON.stringify([...next]));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (activeTab === 'coupang_inbound') {
@@ -419,10 +442,13 @@ export default function InventoryPage() {
   });
 
   const filteredAggregated = aggregatedItems.filter(item => {
+    if (!showHidden && hiddenProducts.has(item.sku)) return false;
     if (!search) return true;
     return item.name.toLowerCase().includes(search.toLowerCase()) ||
            item.sku.toLowerCase().includes(search.toLowerCase());
   });
+
+  const hiddenCount = aggregatedItems.filter(i => hiddenProducts.has(i.sku)).length;
 
   // 정렬
   const sortedInventory = [...filteredInventory].sort((a, b) => {
@@ -669,7 +695,7 @@ export default function InventoryPage() {
       )}
 
       {/* 검색 & 정렬 */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 flex-1">
           <input
             type="text"
@@ -682,6 +708,28 @@ export default function InventoryPage() {
             <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600 p-2">✕</button>
           )}
         </div>
+        {activeTab === 'product' && locationFilter === 'all' && (
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors shrink-0">
+              <input
+                type="checkbox"
+                checked={showHideButtons}
+                onChange={(e) => setShowHideButtons(e.target.checked)}
+                className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
+              />
+              <span className="text-sm font-medium text-slate-700 whitespace-nowrap">숨김 버튼</span>
+            </label>
+            <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors shrink-0">
+              <input
+                type="checkbox"
+                checked={showHidden}
+                onChange={(e) => setShowHidden(e.target.checked)}
+                className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
+              />
+              <span className="text-sm font-medium text-slate-700 whitespace-nowrap">숨긴 상품 ({hiddenCount})</span>
+            </label>
+          </div>
+        )}
       </div>
 
       {/* 테이블 */}
@@ -755,14 +803,26 @@ export default function InventoryPage() {
                 </tr>
               ) : (
                 sortedAggregated.map((item) => (
-                  <tr key={item.sku} className="hover:bg-slate-50 transition-colors">
+                  <tr key={item.sku} className={`hover:bg-slate-50 transition-colors ${hiddenProducts.has(item.sku) ? 'opacity-40' : ''}`}>
                     <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm font-medium">
-                      <button
-                        onClick={() => setSelectedProductSku(item.sku)}
-                        className="text-slate-900 hover:underline text-left break-keep"
-                      >
-                        {item.name}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {showHideButtons && (
+                          <button
+                            type="button"
+                            onClick={() => toggleHide(item.sku)}
+                            className={`shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 transition-colors text-sm font-medium ${hiddenProducts.has(item.sku) ? 'text-green-500 hover:text-green-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            title={hiddenProducts.has(item.sku) ? '숨김 해제' : '숨기기'}
+                          >
+                            {hiddenProducts.has(item.sku) ? '⊕' : '⊖'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setSelectedProductSku(item.sku)}
+                          className="text-slate-900 hover:underline text-left break-keep"
+                        >
+                          {item.name}
+                        </button>
+                      </div>
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-right text-slate-600 whitespace-nowrap">{item.warehouse > 0 ? item.warehouse.toLocaleString() : '-'}</td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 text-sm text-right text-slate-600 whitespace-nowrap">{item.coupang > 0 ? item.coupang.toLocaleString() : '-'}</td>
