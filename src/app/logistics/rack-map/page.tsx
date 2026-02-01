@@ -90,7 +90,7 @@ function getP(key: string, dynamicMap: Map<string, ProductDef>): ProductDef {
   return { key, full: key, brand: '기타', bg: '#e5e7eb', fg: '#374151', type: 'product' };
 }
 
-const BRAND_ICONS: Record<string, string> = { '키들': '🧸', '쉴트': '🛡️', '부자재': '📦', '기타': '📦' };
+const BRAND_ICONS: Record<string, string> = { '키들': '🧸', '쉴트': '🛡️', '기타': '📦' };
 
 // ============================================================
 // 엑셀 레이아웃 — 슬롯당 복수 아이템 지원 (SlotItem[][])
@@ -184,16 +184,14 @@ function getBrandSummary(sections: Section[], dynamicMap: Map<string, ProductDef
 
   brandMap.forEach(products => products.sort((a, b) => b.count - a.count));
 
-  const brandOrder = ['키들', '쉴트', ...Array.from(brandSet).filter(b => b !== '키들' && b !== '쉴트').sort()];
+  const brandOrder = ['키들', '쉴트', '기타'];
   
-  return brandOrder
-    .filter(brand => brandMap.has(brand) && brandMap.get(brand)!.length > 0)
-    .map(brand => ({
-      brand,
-      icon: BRAND_ICONS[brand] || '📦',
-      total: brandMap.get(brand)!.reduce((s, p) => s + p.count, 0),
-      products: brandMap.get(brand)!,
-    }));
+  return brandOrder.map(brand => ({
+    brand,
+    icon: BRAND_ICONS[brand] || '📦',
+    total: (brandMap.get(brand) || []).reduce((s, p) => s + p.count, 0),
+    products: brandMap.get(brand) || [],
+  }));
 }
 
 // ============================================================
@@ -299,7 +297,7 @@ export default function RackMapPage() {
       // 하드코딩에 이미 있으면 건너뛰기 (하드코딩 우선)
       if (HARDCODED_MAP[item.sku]) continue;
 
-      const brand = item.type === 'supply' ? '부자재' : inferBrand(item.name, item.category);
+      const brand = item.type === 'supply' ? '기타' : inferBrand(item.name, item.category);
       const color = getAutoColor(item.category, item.sku);
       map.set(item.sku, {
         key: item.sku,
@@ -324,7 +322,7 @@ export default function RackMapPage() {
       const brand = existing
         ? existing.brand
         : item.type === 'supply'
-          ? '부자재'
+          ? '기타'
           : inferBrand(item.name, item.category);
 
       if (!groups.has(brand)) groups.set(brand, []);
@@ -346,8 +344,8 @@ export default function RackMapPage() {
 
     // ❌ 하드코딩 fallback 제거 — DB 재고 있는 상품만 표시
 
-    // 브랜드 순서: 키들 → 쉴트 → 부자재 → 나머지
-    const order = ['키들', '쉴트', '부자재', '기타'];
+    // 브랜드 순서: 키들 → 쉴트 → 기타
+    const order = ['키들', '쉴트', '기타'];
     const sorted = [...groups.entries()].sort((a, b) => {
       const ai = order.indexOf(a[0]);
       const bi = order.indexOf(b[0]);
@@ -467,7 +465,7 @@ export default function RackMapPage() {
 
       {/* 브랜드별 요약 */}
       <div className="space-y-2">
-        {brandSummary.filter(b => b.total > 0).map(b => (
+        {brandSummary.map(b => (
           <div key={b.brand} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <button
               className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors"
