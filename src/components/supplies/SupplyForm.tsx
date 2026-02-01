@@ -17,7 +17,7 @@ export default function SupplyForm({ onClose, onSuccess, initialData }: SupplyFo
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<Supply>>({
     name: '',
-    sku: '-',
+    sku: `SUP-${Date.now().toString(36).toUpperCase()}`,
     qr_code: '',
     unit_name: 'EA',
     unit_qty: 1,
