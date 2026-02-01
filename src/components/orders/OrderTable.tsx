@@ -1,7 +1,8 @@
 import { Database } from '@/types/database';
 import Link from 'next/link';
 
-type Order = Database['public']['Tables']['orders']['Row'];
+type OrderRow = Database['public']['Tables']['orders']['Row'];
+type Order = OrderRow & { factories?: { name: string } | null };
 type OrderStatus = Database['public']['Enums']['order_status'];
 
 interface OrderTableProps {
@@ -100,7 +101,7 @@ export default function OrderTable({ orders, loading, onEdit, onDelete }: OrderT
                   </Link>
                 </td>
                 <td className="px-3 sm:px-6 py-2 sm:py-4 text-slate-600 whitespace-nowrap">
-                  {supplierMap[order.supplier] || order.supplier}
+                  {order.factories?.name || supplierMap[order.supplier] || order.supplier}
                 </td>
                 <td className="px-3 sm:px-6 py-2 sm:py-4">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap ${statusMap[order.status]?.className || 'bg-slate-100 text-slate-800'}`}>

@@ -49,16 +49,11 @@ export default function OrderEditModal({ order, onClose, onSuccess }: OrderEditM
     e.preventDefault();
     setLoading(true);
 
-    // Find selected factory name for supplier field (backward compat)
-    const selectedFactory = factories.find(f => f.id === factoryId);
-    const supplierName = selectedFactory?.name?.toUpperCase() || 'OTHER';
-
     try {
       const { error } = await (supabase
         .from('orders') as any)
         .update({
           factory_id: factoryId || null,
-          supplier: supplierName,
           status,
           ship_name: shipName || null,
           etd: etd || null,

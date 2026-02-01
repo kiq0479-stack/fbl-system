@@ -127,16 +127,12 @@ export default function OrderForm({ onClose, onSuccess }: OrderFormProps) {
 
     try {
       // 1. Create Order
-      // Find selected factory name for backward compat supplier field
-      const selectedFactory = factories.find(f => f.id === factoryId);
-      const supplierName = selectedFactory?.name?.toUpperCase() || 'OTHER';
-
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: orderData, error: orderError } = await (supabase as any)
         .from('orders')
         .insert({
           order_number: orderNumber,
-          supplier: supplierName,
+          supplier: 'OTHER',
           factory_id: factoryId || null,
           status: 'requested',
           ship_name: shipName || null,

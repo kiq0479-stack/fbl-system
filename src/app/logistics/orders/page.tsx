@@ -48,7 +48,7 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     setLoading(true);
     const supabase = createClient();
-    let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('orders').select('*, factories(name)').order('created_at', { ascending: false });
 
     if (activeFilter !== 'all') {
       query = query.eq('status', activeFilter);
