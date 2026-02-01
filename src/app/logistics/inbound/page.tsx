@@ -490,19 +490,21 @@ export default function InboundPage() {
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">입고 관리</h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">물류센터 입고 예정 및 현황을 관리합니다.</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">입고 관리</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">물류센터 입고 예정 및 현황을 관리합니다.</p>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors whitespace-nowrap"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            입고 등록
+          </button>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors whitespace-nowrap"
-        >
-          <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          입고 등록
-        </button>
         <button
           onClick={() => setIsWarehouseModalOpen(true)}
           className="inline-flex items-center justify-center px-4 py-2 border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 text-sm font-medium rounded-lg shadow-sm transition-colors whitespace-nowrap"
