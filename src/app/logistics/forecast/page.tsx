@@ -54,7 +54,7 @@ export default function ForecastPage() {
   // 숨기기 + 정렬
   const [hiddenProducts, setHiddenProducts] = useState<Set<string>>(new Set());
   const [showHidden, setShowHidden] = useState(false);
-  const [showHideButtons, setShowHideButtons] = useState(true);
+  const [showHideButtons, setShowHideButtons] = useState(false);
   const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
 
   // localStorage에서 숨긴 상품 복원
