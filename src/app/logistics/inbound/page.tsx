@@ -29,6 +29,36 @@ export default function InboundPage() {
   // 현재 선택된 파레트 탭
   const [activePallet, setActivePallet] = useState(1);
 
+  // 납품센터 관리
+  const DEFAULT_WAREHOUSES = ['천안1 센터', '대전 센터', '용인 센터', '기타'];
+  const [warehouses, setWarehouses] = useState<string[]>(DEFAULT_WAREHOUSES);
+  const [isWarehouseModalOpen, setIsWarehouseModalOpen] = useState(false);
+  const [newWarehouse, setNewWarehouse] = useState('');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('fbl_warehouses');
+    if (saved) {
+      try { setWarehouses(JSON.parse(saved)); } catch {}
+    }
+  }, []);
+
+  const saveWarehouses = (list: string[]) => {
+    setWarehouses(list);
+    localStorage.setItem('fbl_warehouses', JSON.stringify(list));
+  };
+
+  const handleAddWarehouse = () => {
+    const name = newWarehouse.trim();
+    if (!name || warehouses.includes(name)) return;
+    saveWarehouses([...warehouses, name]);
+    setNewWarehouse('');
+  };
+
+  const handleRemoveWarehouse = (name: string) => {
+    if (DEFAULT_WAREHOUSES.includes(name)) return; // 기본값 삭제 불가
+    saveWarehouses(warehouses.filter(w => w !== name));
+  };
+
   // 상세보기/상태변경/수정 모달
   const [selectedInbound, setSelectedInbound] = useState<InboundRequest | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -473,6 +503,15 @@ export default function InboundPage() {
           </svg>
           입고 등록
         </button>
+        <button
+          onClick={() => setIsWarehouseModalOpen(true)}
+          className="inline-flex items-center justify-center px-4 py-2 border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 text-sm font-medium rounded-lg shadow-sm transition-colors whitespace-nowrap"
+        >
+          <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+          납품센터 관리
+        </button>
       </div>
 
       {/* Tabs */}
@@ -773,10 +812,9 @@ export default function InboundPage() {
                     onChange={(e) => setFormData({...formData, warehouse_name: e.target.value})}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="천안1 센터">천안1 센터</option>
-                    <option value="대전 센터">대전 센터</option>
-                    <option value="용인 센터">용인 센터</option>
-                    <option value="기타">기타</option>
+                    {warehouses.map(w => (
+                      <option key={w} value={w}>{w}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -1019,10 +1057,9 @@ export default function InboundPage() {
                     onChange={(e) => setFormData({...formData, warehouse_name: e.target.value})}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="천안1 센터">천안1 센터</option>
-                    <option value="대전 센터">대전 센터</option>
-                    <option value="용인 센터">용인 센터</option>
-                    <option value="기타">기타</option>
+                    {warehouses.map(w => (
+                      <option key={w} value={w}>{w}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -1213,6 +1250,70 @@ export default function InboundPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 납품센터 관리 모달 */}
+      {isWarehouseModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-slate-900">납품센터 관리</h2>
+              <button onClick={() => setIsWarehouseModalOpen(false)} className="text-slate-400 hover:text-slate-500">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* 추가 입력 */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newWarehouse}
+                  onChange={(e) => setNewWarehouse(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddWarehouse()}
+                  placeholder="새 납품센터 이름"
+                  className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <button
+                  onClick={handleAddWarehouse}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  추가
+                </button>
+              </div>
+
+              {/* 목록 */}
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {warehouses.map((w) => (
+                  <div key={w} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg">
+                    <span className="text-sm text-slate-800">{w}</span>
+                    {!DEFAULT_WAREHOUSES.includes(w) ? (
+                      <button
+                        onClick={() => handleRemoveWarehouse(w)}
+                        className="text-red-400 hover:text-red-600 p-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <span className="text-xs text-slate-400">기본</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end">
+              <button
+                onClick={() => setIsWarehouseModalOpen(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                완료
+              </button>
+            </div>
           </div>
         </div>
       )}
