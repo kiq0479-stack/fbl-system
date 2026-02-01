@@ -3,14 +3,13 @@
 import { useState, useRef, useCallback } from 'react';
 
 // ============================================================
-// 상품별 컬러 + 브랜드 매핑
+// 상품 정의 — DB 창고 재고 기준
 // ============================================================
 type ProductDef = { key: string; full: string; brand: '키들' | '쉴트' | '기타'; bg: string; fg: string };
 
 const PRODUCTS: ProductDef[] = [
-  // 키들
+  // 키들 (DB 창고 재고에 있는 상품)
   { key: '기저귀', full: '기저귀 갈이대',     brand: '키들', bg: '#fb7185', fg: '#fff' },
-  { key: '기저5', full: '기저귀 갈이대 5개',  brand: '키들', bg: '#fda4af', fg: '#881337' },
   { key: 'B3책',  full: '베이직 3단 책장',    brand: '키들', bg: '#38bdf8', fg: '#fff' },
   { key: 'B3',    full: '베이직 3단',         brand: '키들', bg: '#0ea5e9', fg: '#fff' },
   { key: 'B4책',  full: '베이직 4단 책장',    brand: '키들', bg: '#60a5fa', fg: '#fff' },
@@ -21,27 +20,15 @@ const PRODUCTS: ProductDef[] = [
   { key: '3브',   full: '3단 계단 브라운',    brand: '키들', bg: '#b45309', fg: '#fff' },
   { key: '2브',   full: '2단 계단 브라운',    brand: '키들', bg: '#d97706', fg: '#fff' },
   { key: '흔말',  full: '흔들말 브라운',      brand: '키들', bg: '#f97316', fg: '#fff' },
-  // 쉴트
+  // 쉴트 (편집 모달에서 선택 가능)
   { key: '캣휠',  full: '캣휠',              brand: '쉴트', bg: '#facc15', fg: '#713f12' },
-  { key: 'D키링', full: 'D키링',             brand: '쉴트', bg: '#5eead4', fg: '#134e4a' },
-  { key: '집게',  full: '집게/양면/자석',     brand: '쉴트', bg: '#5eead4', fg: '#134e4a' },
-  { key: '키링',  full: '키링 스프링',        brand: '쉴트', bg: '#5eead4', fg: '#134e4a' },
-  { key: '새우',  full: '새우형/고급/화실',    brand: '쉴트', bg: '#5eead4', fg: '#134e4a' },
+  { key: '스팽',  full: '스팽글',             brand: '쉴트', bg: '#a78bfa', fg: '#fff' },
   { key: '그립',  full: '스마트 그립톡',      brand: '쉴트', bg: '#2dd4bf', fg: '#fff' },
   { key: '폰케',  full: '폰케이스',           brand: '쉴트', bg: '#99f6e4', fg: '#134e4a' },
-  { key: '스팽',  full: '스팽글',             brand: '쉴트', bg: '#a78bfa', fg: '#fff' },
+  { key: '키링',  full: '키링류',             brand: '쉴트', bg: '#5eead4', fg: '#134e4a' },
   // 기타
   { key: '기타',  full: '기타 물품',          brand: '기타', bg: '#cbd5e1', fg: '#475569' },
-  { key: '팝업',  full: '팝업스토어 용품',     brand: '기타', bg: '#f9a8d4', fg: '#831843' },
-  { key: '충전',  full: '무선 충전 패드',      brand: '기타', bg: '#34d399', fg: '#fff' },
-  { key: '무도',  full: '무도 패드',           brand: '기타', bg: '#6ee7b7', fg: '#065f46' },
-  { key: '불량',  full: '불량 박스',           brand: '기타', bg: '#fecaca', fg: '#991b1b' },
-  { key: '낱개',  full: '낱개 박스',           brand: '기타', bg: '#fed7aa', fg: '#9a3412' },
-  { key: '아크',  full: '아크릴 부자재',       brand: '기타', bg: '#d8b4fe', fg: '#581c87' },
-  { key: '장패',  full: '장패드/단패드',       brand: '기타', bg: '#c4b5fd', fg: '#4c1d95' },
-  { key: '안경',  full: '안경닦기/털쿠션',     brand: '기타', bg: '#c4b5fd', fg: '#4c1d95' },
-  { key: '폴리',  full: '폴리쿠션',           brand: '기타', bg: '#c4b5fd', fg: '#4c1d95' },
-  { key: '포장',  full: '포장박스',            brand: '기타', bg: '#c4b5fd', fg: '#4c1d95' },
+  { key: '부자재', full: '부자재',            brand: '기타', bg: '#d8b4fe', fg: '#581c87' },
 ];
 
 const P_MAP = Object.fromEntries(PRODUCTS.map(p => [p.key, p]));
@@ -51,51 +38,66 @@ const BRAND_ICONS: Record<string, string> = { '키들': '🧸', '쉴트': '🛡�
 const BRAND_ORDER = ['키들', '쉴트', '기타'] as const;
 
 // ============================================================
-// 엑셀 레이아웃 데이터 (2026.01.26)
+// 엑셀 레이아웃 — DB에 없는 항목은 빈칸 처리
 // ============================================================
 const _ = '';
 type Row = { label: string; slots: string[] };
 type Section = { rows: Row[]; passage?: boolean };
 
 const INITIAL_SECTIONS: Section[] = [
+  // === Rack A (3→2→1) ===
   { rows: [
-    { label: 'A 3층', slots: [_,_, '기타','기타','기타','기타', _,_,_, '캣휠','캣휠','캣휠','캣휠','캣휠'] },
-    { label: 'A 2층', slots: [_,_, '기타','기타','기타','기타', _,_,_,_,_,_, '기저5','기저귀'] },
-    { label: 'A 1층', slots: [_,_, '기타','기타','기타','기타', '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀'] },
+    { label: 'A 3층', slots: [_,_,_,_,_,_, _,_,_,_,_,_,_,_] },
+    { label: 'A 2층', slots: [_,_,_,_,_,_, _,_,_,_,_,_,_,'기저귀'] },
+    { label: 'A 1층', slots: [_,_,_,_,_,_, '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀'] },
   ], passage: true },
+
+  // === Rack B (1→2→3) ===
   { rows: [
-    { label: 'B 1층', slots: [_,_, '팝업','팝업', '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_] },
-    { label: 'B 2층', slots: [_,_, '기타','기타', _,_,_,_,_,_,_,_, _,_] },
-    { label: 'B 3층', slots: [_,_, '기타','기타', '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_] },
+    { label: 'B 1층', slots: [_,_,_,_, '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_] },
+    { label: 'B 2층', slots: [_,_,_,_, _,_,_,_,_,_,_,_, _,_] },
+    { label: 'B 3층', slots: [_,_,_,_, '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_] },
   ] },
+
+  // === Rack C (3→2→1) ===
   { rows: [
     { label: 'C 3층', slots: [_,_,_,_,_,_, 'B4책','B4책','B4책','B4책','B4책','B4책', _,_] },
     { label: 'C 2층', slots: [_,_,_,_,_,_,_,_,_, 'B4책','B4책','B4책', _,_] },
     { label: 'C 1층', slots: [_,_, '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_] },
   ], passage: true },
+
+  // === Rack D (1→2→3) ===
   { rows: [
-    { label: 'D 1층', slots: ['충전','충전','충전','무도', '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀',_, _,_] },
-    { label: 'D 2층', slots: ['스팽','스팽','3화','3화', _,_,_,_,_,_,_,_, _,_] },
+    { label: 'D 1층', slots: [_,_,_,_, '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀',_, _,_] },
+    { label: 'D 2층', slots: [_,_,'3화','3화', _,_,_,_,_,_,_,_, _,_] },
     { label: 'D 3층', slots: [_,_, '3화','3화','3화',_,_, 'B4','B4','B4','B4','B4', _,_] },
   ] },
+
+  // === Rack E (3→2→1) ===
   { rows: [
     { label: 'E 3층', slots: [_, '2브','3브','3브', _,_, 'B3책','B3책','B3책','B3책','B3책','B3책', _,_] },
-    { label: 'E 2층', slots: ['스팽','스팽','3브','3브', 'B3책','B3책','B3책','B3책','B3책','B3책','B3책','B3책', _,_] },
-    { label: 'E 1층', slots: ['장패','안경','폴리','포장', 'B3책','B3책',_, 'B3책','B3책','B3책','B3책','B3책', _,_] },
+    { label: 'E 2층', slots: [_,_,'3브','3브', 'B3책','B3책','B3책','B3책','B3책','B3책','B3책','B3책', _,_] },
+    { label: 'E 1층', slots: [_,_,_,_, 'B3책','B3책',_, 'B3책','B3책','B3책','B3책','B3책', _,_] },
   ], passage: true },
+
+  // === Rack F (1→2→3) ===
   { rows: [
-    { label: 'F 1층', slots: ['D키링','집게','키링','새우', _,_,_, 'B3','불량','불량','불량','불량', _,_] },
-    { label: 'F 2층', slots: ['아크','아크','전면','전면', _, 'B3','B3','B3','B3','B3','B3','B3', _,_] },
+    { label: 'F 1층', slots: [_,_,_,_, _,_,_, 'B3',_,_,_,_, _,_] },
+    { label: 'F 2층', slots: [_,_,'전면','전면', _, 'B3','B3','B3','B3','B3','B3','B3', _,_] },
     { label: 'F 3층', slots: ['전면','전면',_,_, 'B3','B3','B3','B3','B3','B3','B3','B3', _,_] },
   ] },
+
+  // === Rack G (3→2→1) ===
   { rows: [
     { label: 'G 3층', slots: [_,_,_,_,_,_, '흔말','흔말','흔말','흔말','흔말','흔말', _,_] },
-    { label: 'G 2층', slots: ['아크','아크','그립', _,_,_,_,_, '흔말','흔말','흔말','흔말', _,_] },
-    { label: 'G 1층', slots: ['D키링','그립','그립','폰케', '흔말',_,_,_, '불량','불량','불량','불량', _,_] },
+    { label: 'G 2층', slots: [_,_,_,_,_,_,_,_, '흔말','흔말','흔말','흔말', _,_] },
+    { label: 'G 1층', slots: [_,_,_,_, '흔말',_,_,_,_,_,_,_, _,_] },
   ], passage: true },
+
+  // === Rack H (1→2→3) ===
   { rows: [
-    { label: 'H 1층', slots: ['기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_, '낱개','낱개','낱개','낱개','낱개','낱개'] },
-    { label: 'H 2층', slots: [_,_,_,_, '옷장','옷장','옷장','옷장','옷장','옷장', '낱개','낱개','낱개','낱개'] },
+    { label: 'H 1층', slots: ['기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_,_,_,_,_,_,_] },
+    { label: 'H 2층', slots: [_,_,_,_, '옷장','옷장','옷장','옷장','옷장','옷장', _,_,_,_] },
     { label: 'H 3층', slots: ['옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장'] },
   ] },
 ];
@@ -103,45 +105,30 @@ const INITIAL_SECTIONS: Section[] = [
 function deepClone<T>(obj: T): T { return JSON.parse(JSON.stringify(obj)); }
 
 // ============================================================
-// 브랜드별 요약 계산
+// 브랜드별 요약
 // ============================================================
-type ProductSummary = { key: string; full: string; count: number; locations: string[]; bg: string; fg: string };
+type ProductSummary = { key: string; full: string; count: number; bg: string; fg: string };
 type BrandSummary = { brand: string; icon: string; total: number; products: ProductSummary[] };
 
 function getBrandSummary(sections: Section[]): BrandSummary[] {
-  // product key → { count, locations Set }
-  const map = new Map<string, { count: number; locs: Set<string> }>();
-
+  const map = new Map<string, number>();
   sections.forEach(sec => sec.rows.forEach(row => {
-    const rackFloor = row.label; // e.g. "A 3층"
-    row.slots.forEach(s => {
-      if (!s) return;
-      let entry = map.get(s);
-      if (!entry) { entry = { count: 0, locs: new Set() }; map.set(s, entry); }
-      entry.count++;
-      entry.locs.add(rackFloor);
-    });
+    row.slots.forEach(s => { if (s) map.set(s, (map.get(s) || 0) + 1); });
   }));
 
   const brandMap = new Map<string, ProductSummary[]>();
   BRAND_ORDER.forEach(b => brandMap.set(b, []));
 
-  map.forEach((val, key) => {
+  map.forEach((count, key) => {
     const p = getP(key);
-    const brand = p.brand;
-    if (!brandMap.has(brand)) brandMap.set(brand, []);
-    brandMap.get(brand)!.push({
-      key, full: p.full, count: val.count,
-      locations: Array.from(val.locs).sort(),
-      bg: p.bg, fg: p.fg,
-    });
+    if (!brandMap.has(p.brand)) brandMap.set(p.brand, []);
+    brandMap.get(p.brand)!.push({ key, full: p.full, count, bg: p.bg, fg: p.fg });
   });
 
   brandMap.forEach(products => products.sort((a, b) => b.count - a.count));
 
   return BRAND_ORDER.map(brand => ({
-    brand,
-    icon: BRAND_ICONS[brand],
+    brand, icon: BRAND_ICONS[brand],
     total: brandMap.get(brand)!.reduce((s, p) => s + p.count, 0),
     products: brandMap.get(brand)!,
   }));
@@ -161,9 +148,7 @@ export default function RackMapPage() {
   const totalP = brandSummary.reduce((s, b) => s + b.total, 0);
   const totalSlots = sections.reduce((s, sec) => s + sec.rows.reduce((s2, r) => s2 + r.slots.length, 0), 0);
 
-  // 슬롯 편집
   const editSlot = editTarget ? {
-    section: sections[editTarget.si],
     row: sections[editTarget.si].rows[editTarget.ri],
     slotIdx: editTarget.slotIdx,
     current: sections[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx],
@@ -189,18 +174,12 @@ export default function RackMapPage() {
     setEditTarget(null);
   }, [editTarget]);
 
-  // 위치 클릭 → 스크롤
-  const scrollToRow = (label: string) => {
-    const el = rowRefs.current.get(label);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  };
-
   return (
     <div className="space-y-4">
       {/* 헤더 */}
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900">🏭 창고 랙 도면</h1>
-        <p className="text-xs text-slate-400 mt-0.5">기준: 2026.01.26 · {totalP}P / {totalSlots}슬롯 ({Math.round(totalP/totalSlots*100)}%)</p>
+        <p className="text-xs text-slate-400 mt-0.5">{totalP}P / {totalSlots}슬롯 ({Math.round(totalP/totalSlots*100)}%)</p>
       </div>
 
       {/* 브랜드별 요약 */}
@@ -259,12 +238,10 @@ export default function RackMapPage() {
                     className={`grid items-stretch ${ri > 0 ? 'border-t border-red-300 border-dashed' : ''}`}
                     style={{ gridTemplateColumns: '52px repeat(14, 1fr) 52px' }}
                   >
-                    {/* 좌측 라벨 */}
                     <div className="bg-slate-100 border-r border-slate-300 flex items-center justify-center px-1 py-1.5">
                       <span className="text-[9px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{row.label}</span>
                     </div>
 
-                    {/* 슬롯 14칸 */}
                     {row.slots.map((s, i) => {
                       const isEmpty = !s;
                       const p = !isEmpty ? getP(s) : null;
@@ -282,7 +259,7 @@ export default function RackMapPage() {
                             color: p ? p.fg : '',
                             opacity: isDim ? 0.25 : 1,
                           }}
-                          title={isEmpty ? `빈 슬롯 #${i+1} — 클릭하여 추가` : `${p!.full} — 클릭하여 편집`}
+                          title={isEmpty ? `빈 슬롯 — 클릭하여 추가` : `${p!.full} — 클릭하여 편집`}
                           onClick={() => setEditTarget({ si, ri, slotIdx: i })}
                         >
                           {!isEmpty && (
@@ -295,7 +272,6 @@ export default function RackMapPage() {
                       );
                     })}
 
-                    {/* 우측 라벨 */}
                     <div className="bg-slate-100 border-l border-slate-300 flex items-center justify-center px-1 py-1.5">
                       <span className="text-[9px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{row.label}</span>
                     </div>
@@ -342,7 +318,6 @@ export default function RackMapPage() {
             </div>
 
             <div className="p-4 space-y-3">
-              {/* 비우기 버튼 */}
               {editSlot.current && (
                 <button
                   onClick={handleSlotClear}
@@ -355,30 +330,31 @@ export default function RackMapPage() {
                 </button>
               )}
 
-              {/* 브랜드별 상품 선택 */}
-              {BRAND_ORDER.map(brand => (
-                <div key={brand}>
-                  <div className="text-xs font-semibold text-slate-500 mb-1.5">
-                    {BRAND_ICONS[brand]} {brand}
+              {BRAND_ORDER.map(brand => {
+                const items = PRODUCTS.filter(p => p.brand === brand);
+                if (items.length === 0) return null;
+                return (
+                  <div key={brand}>
+                    <div className="text-xs font-semibold text-slate-500 mb-1.5">
+                      {BRAND_ICONS[brand]} {brand}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {items.map(p => (
+                        <button
+                          key={p.key}
+                          className={`text-xs font-medium px-3 py-2 rounded-lg border transition-all text-left ${
+                            editSlot.current === p.key ? 'ring-2 ring-slate-900 scale-[1.02]' : 'hover:scale-[1.02]'
+                          }`}
+                          style={{ backgroundColor: p.bg, color: p.fg, borderColor: 'rgba(0,0,0,0.1)' }}
+                          onClick={() => handleSlotChange(p.key)}
+                        >
+                          {p.full}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {PRODUCTS.filter(p => p.brand === brand).map(p => (
-                      <button
-                        key={p.key}
-                        className={`text-xs font-medium px-3 py-2 rounded-lg border transition-all text-left ${
-                          editSlot.current === p.key
-                            ? 'ring-2 ring-slate-900 scale-[1.02]'
-                            : 'hover:scale-[1.02]'
-                        }`}
-                        style={{ backgroundColor: p.bg, color: p.fg, borderColor: 'rgba(0,0,0,0.1)' }}
-                        onClick={() => handleSlotChange(p.key)}
-                      >
-                        {p.full}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
