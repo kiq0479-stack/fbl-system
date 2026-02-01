@@ -1038,7 +1038,7 @@ export default function InventoryPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm text-slate-500">SKU</div>
+                  <div className="text-sm text-slate-500">옵션ID</div>
                   <div className="font-mono text-slate-800">{selectedSupply.sku}</div>
                 </div>
                 <div>
