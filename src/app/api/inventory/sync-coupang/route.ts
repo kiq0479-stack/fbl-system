@@ -2,46 +2,16 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getRocketGrowthInventory, getCoupangAccounts } from '@/lib/coupang';
 
-// Vercel 함수 타임아웃 60초 (Pro 플랜)
-export const maxDuration = 60;
-
 export async function POST() {
   try {
     const supabase = await createClient();
     const accounts = getCoupangAccounts();
 
-    // 1. 모든 계정에서 재고 수집 (페이지네이션)
-    const inventoryMap = new Map<string, number>();
-
-    await Promise.all(accounts.map(async (account) => {
-      const config = {
-        vendorId: account.vendorId,
-        accessKey: account.accessKey,
-        secretKey: account.secretKey,
-      };
-
-      let nextToken: string | undefined;
-      let pageCount = 0;
-
-      do {
-        const response = await getRocketGrowthInventory(config, config.vendorId, { nextToken });
-        for (const item of (response.data || [])) {
-          const sku = String(item.vendorItemId);
-          const qty = item.inventoryDetails?.totalOrderableQuantity || 0;
-          inventoryMap.set(sku, qty);
-        }
-        nextToken = response.nextToken || undefined;
-        pageCount++;
-      } while (nextToken && pageCount < 50);
-
-      console.log(`[${account.name}] ${pageCount}페이지 조회 완료`);
-    }));
-
-    // 2. DB 상품 + 기존 재고 조회
-    const { data: products } = await (supabase.from('products') as any).select('id, sku, name');
-    const { data: existingInventory } = await (supabase.from('inventory') as any)
-      .select('id, product_id, quantity')
-      .eq('location', 'coupang');
+    // 1. DB 상품 + 기존 재고 동시 조회
+    const [{ data: products }, { data: existingInventory }] = await Promise.all([
+      (supabase.from('products') as any).select('id, sku, name'),
+      (supabase.from('inventory') as any).select('id, product_id, quantity').eq('location', 'coupang'),
+    ]);
 
     if (!products?.length) {
       return NextResponse.json({ success: true, message: '등록된 상품 없음', updated: 0, added: 0 });
@@ -51,6 +21,37 @@ export async function POST() {
     for (const inv of (existingInventory || [])) {
       existingMap.set(inv.product_id, { id: inv.id, quantity: inv.quantity });
     }
+
+    // 2. 모든 상품 × 모든 계정 동시 병렬 조회 (33개 × 2계정 = ~66건, 동시 실행)
+    const inventoryMap = new Map<string, number>();
+    const skuList = products.map((p: any) => p.sku).filter(Boolean);
+
+    await Promise.all(accounts.map(async (account) => {
+      const config = {
+        vendorId: account.vendorId,
+        accessKey: account.accessKey,
+        secretKey: account.secretKey,
+      };
+
+      const results = await Promise.all(
+        skuList.map(async (sku: string) => {
+          try {
+            const res = await getRocketGrowthInventory(config, config.vendorId, { vendorItemId: sku });
+            if (res.data?.[0]) {
+              return { sku, qty: res.data[0].inventoryDetails?.totalOrderableQuantity || 0 };
+            }
+          } catch {}
+          return null;
+        })
+      );
+
+      for (const r of results) {
+        if (r && r.qty > 0) {
+          const prev = inventoryMap.get(r.sku) || 0;
+          if (r.qty > prev) inventoryMap.set(r.sku, r.qty);
+        }
+      }
+    }));
 
     // 3. 변경사항 계산
     const toInsert: any[] = [];
@@ -73,18 +74,18 @@ export async function POST() {
     }
 
     // 4. DB 반영 (병렬)
+    const dbOps: Promise<any>[] = [];
     if (toInsert.length > 0) {
-      await (supabase.from('inventory') as any).insert(toInsert);
+      dbOps.push((supabase.from('inventory') as any).insert(toInsert));
     }
     if (toUpdate.length > 0) {
-      await Promise.all(
-        toUpdate.map(item =>
-          (supabase.from('inventory') as any)
-            .update({ quantity: item.quantity, updated_at: new Date().toISOString() })
-            .eq('id', item.id)
-        )
-      );
+      dbOps.push(...toUpdate.map(item =>
+        (supabase.from('inventory') as any)
+          .update({ quantity: item.quantity, updated_at: new Date().toISOString() })
+          .eq('id', item.id)
+      ));
     }
+    if (dbOps.length > 0) await Promise.all(dbOps);
 
     return NextResponse.json({
       success: true,
