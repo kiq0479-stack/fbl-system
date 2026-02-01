@@ -280,7 +280,7 @@ export default function RackMapPage() {
               </div>
 
               {sec.passage && (
-                <div className="flex items-center justify-center py-1.5 mb-1">
+                <div className="flex items-center justify-center py-4 mb-1">
                   <span className="text-xs text-slate-400 font-medium tracking-widest">— 통로 —</span>
                 </div>
               )}
