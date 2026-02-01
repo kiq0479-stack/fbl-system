@@ -8,7 +8,8 @@ import { createClient } from '@/lib/supabase/client';
 // ============================================================
 type ProductDef = { key: string; full: string; brand: string; category?: string; bg: string; fg: string; type: 'product' | 'supply' };
 
-type Row = { label: string; slots: string[][] };
+type SlotItem = { key: string; qty: number };
+type Row = { label: string; slots: SlotItem[][] };
 type Section = { rows: Row[]; passage?: boolean };
 
 type DbProduct = {
@@ -92,10 +93,10 @@ function getP(key: string, dynamicMap: Map<string, ProductDef>): ProductDef {
 const BRAND_ICONS: Record<string, string> = { '키들': '🧸', '쉴트': '🛡️', '부자재': '📦', '기타': '📦' };
 
 // ============================================================
-// 엑셀 레이아웃 — 슬롯당 복수 아이템 지원 (string[][])
+// 엑셀 레이아웃 — 슬롯당 복수 아이템 지원 (SlotItem[][])
 // ============================================================
-const E: string[] = [];    // 빈 슬롯
-const S = (k: string): string[] => [k]; // 단일 아이템 슬롯
+const E: SlotItem[] = [];    // 빈 슬롯
+const S = (k: string, q = 1): SlotItem[] => [{ key: k, qty: q }]; // 단일 아이템 슬롯
 
 const INITIAL_SECTIONS: Section[] = [
   // === Rack A (3→2→1) ===
@@ -167,7 +168,7 @@ function getBrandSummary(sections: Section[], dynamicMap: Map<string, ProductDef
   const map = new Map<string, number>();
   sections.forEach(sec => sec.rows.forEach(row => {
     row.slots.forEach(slot => {
-      slot.forEach(key => { if (key) map.set(key, (map.get(key) || 0) + 1); });
+      slot.forEach(item => { if (item.key) map.set(item.key, (map.get(item.key) || 0) + item.qty); });
     });
   }));
 
@@ -218,6 +219,8 @@ export default function RackMapPage() {
   const [dbProducts, setDbProducts] = useState<DbProduct[]>([]);
   const [dbLoading, setDbLoading] = useState(true);
   const [modalSearch, setModalSearch] = useState('');
+  const [pendingAdd, setPendingAdd] = useState<string | null>(null);
+  const [pendingQty, setPendingQty] = useState(1);
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const supabase = createClient();
@@ -311,11 +314,11 @@ export default function RackMapPage() {
     return map;
   }, [dbProducts]);
 
-  // ── 모달용: 브랜드/카테고리별로 그룹핑된 상품 목록 ──
+  // ── 모달용: 브랜드/카테고리별로 그룹핑된 상품 목록 (DB 재고 상품만) ──
   const groupedModalProducts = useMemo(() => {
     const groups = new Map<string, ProductDef[]>();
 
-    // DB 상품을 브랜드별로 그룹핑
+    // DB 상품을 브랜드별로 그룹핑 (재고 있는 상품만)
     for (const item of dbProducts) {
       const existing = HARDCODED_MAP[item.sku];
       const brand = existing
@@ -341,14 +344,7 @@ export default function RackMapPage() {
       }
     }
 
-    // 하드코딩 상품 중 DB에 없는 것도 fallback으로 추가
-    for (const hp of HARDCODED_PRODUCTS) {
-      const brand = hp.brand;
-      if (!groups.has(brand)) groups.set(brand, []);
-      if (!groups.get(brand)!.some(p => p.key === hp.key)) {
-        groups.get(brand)!.push(hp);
-      }
-    }
+    // ❌ 하드코딩 fallback 제거 — DB 재고 있는 상품만 표시
 
     // 브랜드 순서: 키들 → 쉴트 → 부자재 → 나머지
     const order = ['키들', '쉴트', '부자재', '기타'];
@@ -371,18 +367,38 @@ export default function RackMapPage() {
     current: sections[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx],
   } : null;
 
-  // ── 슬롯에 아이템 추가 ──
-  const handleSlotAdd = useCallback((productKey: string) => {
-    if (!editTarget) return;
+  // ── 수량 입력 후 확인 → 슬롯에 추가 ──
+  const handlePendingConfirm = useCallback(() => {
+    if (!editTarget || !pendingAdd) return;
+
+    const currentSlot = sections[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx];
+    const wasEmpty = currentSlot.length === 0;
+
     setSections(prev => {
       const next = deepClone(prev);
       const slot = next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx];
-      if (!slot.includes(productKey)) {
-        slot.push(productKey);
+
+      if (slot.length === 0) {
+        next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx] = [{ key: pendingAdd, qty: pendingQty }];
+      } else {
+        const existing = slot.find(item => item.key === pendingAdd);
+        if (existing) {
+          existing.qty += pendingQty;
+        } else {
+          slot.push({ key: pendingAdd, qty: pendingQty });
+        }
       }
       return next;
     });
-  }, [editTarget]);
+
+    setPendingAdd(null);
+    setPendingQty(1);
+
+    if (wasEmpty) {
+      setEditTarget(null);
+      setModalSearch('');
+    }
+  }, [editTarget, pendingAdd, pendingQty, sections]);
 
   // ── 슬롯에서 아이템 제거 ──
   const handleSlotRemove = useCallback((productKey: string) => {
@@ -390,8 +406,20 @@ export default function RackMapPage() {
     setSections(prev => {
       const next = deepClone(prev);
       const slot = next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx];
-      const idx = slot.indexOf(productKey);
+      const idx = slot.findIndex(item => item.key === productKey);
       if (idx !== -1) slot.splice(idx, 1);
+      return next;
+    });
+  }, [editTarget]);
+
+  // ── 슬롯 아이템 수량 변경 ──
+  const handleSlotUpdateQty = useCallback((productKey: string, newQty: number) => {
+    if (!editTarget || newQty < 1) return;
+    setSections(prev => {
+      const next = deepClone(prev);
+      const slot = next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx];
+      const item = slot.find(i => i.key === productKey);
+      if (item) item.qty = newQty;
       return next;
     });
   }, [editTarget]);
@@ -407,16 +435,13 @@ export default function RackMapPage() {
     setEditTarget(null);
   }, [editTarget]);
 
-  // ── 슬롯을 단일 상품으로 교체 (빈 슬롯 클릭 시 빠른 할당) ──
-  const handleSlotSet = useCallback((productKey: string) => {
-    if (!editTarget) return;
-    setSections(prev => {
-      const next = deepClone(prev);
-      next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx] = [productKey];
-      return next;
-    });
+  // ── 모달 닫기 ──
+  const handleModalClose = useCallback(() => {
     setEditTarget(null);
-  }, [editTarget]);
+    setModalSearch('');
+    setPendingAdd(null);
+    setPendingQty(1);
+  }, []);
 
   // ── 검색 필터링된 모달 상품 ──
   const filteredModalProducts = useMemo(() => {
@@ -503,10 +528,10 @@ export default function RackMapPage() {
                     {row.slots.map((slot, i) => {
                       const isEmpty = slot.length === 0;
                       const isMulti = slot.length > 1;
-                      const firstKey = slot[0] || '';
-                      const p = !isEmpty ? getP(firstKey, dynamicProductMap) : null;
-                      const isHi = highlight && slot.includes(highlight);
-                      const isDim = highlight && !slot.includes(highlight) && !isEmpty;
+                      const firstItem = slot[0];
+                      const p = firstItem ? getP(firstItem.key, dynamicProductMap) : null;
+                      const isHi = highlight && slot.some(item => item.key === highlight);
+                      const isDim = highlight && !slot.some(item => item.key === highlight) && !isEmpty;
 
                       return (
                         <button
@@ -519,19 +544,24 @@ export default function RackMapPage() {
                             color: p ? p.fg : '',
                             opacity: isDim ? 0.25 : 1,
                             ...(isMulti ? { 
-                              background: `linear-gradient(135deg, ${getP(slot[0], dynamicProductMap).bg} 50%, ${getP(slot[1], dynamicProductMap).bg} 50%)`,
+                              background: `linear-gradient(135deg, ${getP(slot[0].key, dynamicProductMap).bg} 50%, ${getP(slot[1].key, dynamicProductMap).bg} 50%)`,
                             } : {}),
                           }}
                           title={isEmpty 
                             ? `빈 슬롯 — 클릭하여 추가` 
                             : isMulti
-                              ? `${slot.map(k => getP(k, dynamicProductMap).full).join(' + ')} — 클릭하여 편집`
-                              : `${p!.full} — 클릭하여 편집`
+                              ? `${slot.map(item => `${getP(item.key, dynamicProductMap).full} ×${item.qty}`).join(' + ')} — 클릭하여 편집`
+                              : `${p!.full} ×${firstItem.qty} — 클릭하여 편집`
                           }
                           onClick={() => setEditTarget({ si, ri, slotIdx: i })}
                         >
                           {!isEmpty && !isMulti && (
-                            <span className="text-[6px] sm:text-[8px] font-bold leading-none select-none text-center">{firstKey}</span>
+                            <span className="text-[6px] sm:text-[8px] font-bold leading-tight select-none text-center">
+                              {firstItem.key}
+                              {firstItem.qty > 1 && (
+                                <span className="block text-[5px] sm:text-[7px] opacity-80">×{firstItem.qty}</span>
+                              )}
+                            </span>
                           )}
                           {isMulti && (
                             <span className="text-[6px] sm:text-[8px] font-bold leading-none select-none text-center">
@@ -564,7 +594,7 @@ export default function RackMapPage() {
 
       {/* 슬롯 편집 모달 */}
       {editSlot && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={() => { setEditTarget(null); setModalSearch(''); }}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={handleModalClose}>
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 z-10">
               <div className="flex items-center justify-between">
@@ -579,25 +609,42 @@ export default function RackMapPage() {
                     }
                   </p>
                 </div>
-                <button onClick={() => { setEditTarget(null); setModalSearch(''); }} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
+                <button onClick={handleModalClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
-              {/* 현재 슬롯 아이템 표시 */}
+              {/* 현재 슬롯 아이템 표시 (수량 조절 포함) */}
               {editSlot.current.length > 0 && (
                 <div className="mt-3 space-y-1.5">
-                  {editSlot.current.map((key, idx) => {
-                    const p = getP(key, dynamicProductMap);
+                  {editSlot.current.map((item, idx) => {
+                    const p = getP(item.key, dynamicProductMap);
                     return (
-                      <div key={`${key}-${idx}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border" style={{ backgroundColor: p.bg + '20', borderColor: p.bg }}>
+                      <div key={`${item.key}-${idx}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border" style={{ backgroundColor: p.bg + '20', borderColor: p.bg }}>
                         <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: p.bg }} />
                         <span className="text-xs font-medium text-slate-800 flex-1">{p.full}</span>
+                        {/* 수량 조절 */}
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => handleSlotUpdateQty(item.key, item.qty - 1)}
+                            disabled={item.qty <= 1}
+                            className="w-5 h-5 flex items-center justify-center rounded text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-transparent text-xs font-bold"
+                          >
+                            −
+                          </button>
+                          <span className="text-xs font-bold text-slate-700 w-5 text-center">{item.qty}</span>
+                          <button
+                            onClick={() => handleSlotUpdateQty(item.key, item.qty + 1)}
+                            className="w-5 h-5 flex items-center justify-center rounded text-slate-500 hover:bg-slate-200 text-xs font-bold"
+                          >
+                            +
+                          </button>
+                        </div>
                         <button
-                          onClick={() => handleSlotRemove(key)}
-                          className="text-red-400 hover:text-red-600 p-0.5"
+                          onClick={() => handleSlotRemove(item.key)}
+                          className="text-red-400 hover:text-red-600 p-0.5 ml-1"
                           title="제거"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -609,6 +656,56 @@ export default function RackMapPage() {
                   })}
                 </div>
               )}
+
+              {/* 수량 입력 패널 (상품 클릭 후 표시) */}
+              {pendingAdd && (() => {
+                const pDef = getP(pendingAdd, dynamicProductMap);
+                return (
+                  <div className="mt-3 p-3 rounded-xl border-2 border-blue-300 bg-blue-50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: pDef.bg }} />
+                      <span className="text-sm font-semibold text-slate-800">{pDef.full}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500">수량</span>
+                      <button
+                        onClick={() => setPendingQty(q => Math.max(1, q - 1))}
+                        disabled={pendingQty <= 1}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30 text-sm font-bold"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        value={pendingQty}
+                        onChange={e => setPendingQty(Math.max(1, parseInt(e.target.value) || 1))}
+                        onKeyDown={e => { if (e.key === 'Enter') handlePendingConfirm(); if (e.key === 'Escape') { setPendingAdd(null); setPendingQty(1); } }}
+                        className="w-14 h-7 text-center text-sm font-bold border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => setPendingQty(q => q + 1)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 text-sm font-bold"
+                      >
+                        +
+                      </button>
+                      <button
+                        onClick={handlePendingConfirm}
+                        className="ml-auto px-3 h-7 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors"
+                      >
+                        추가
+                      </button>
+                      <button
+                        onClick={() => { setPendingAdd(null); setPendingQty(1); }}
+                        className="px-2 h-7 rounded-lg border border-slate-300 text-slate-500 text-xs hover:bg-slate-100 transition-colors"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* 검색 */}
               <div className="mt-3 relative">
@@ -646,7 +743,7 @@ export default function RackMapPage() {
                 </div>
               )}
 
-              {/* 상품 목록 — 브랜드별 그룹 */}
+              {/* 상품 목록 — 브랜드별 그룹 (색상 제거, 심플 스타일) */}
               {filteredModalProducts.map(([brand, items]) => {
                 if (items.length === 0) return null;
                 return (
@@ -656,36 +753,38 @@ export default function RackMapPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
                       {items.map(p => {
-                        const isInSlot = editSlot.current.includes(p.key);
+                        const isInSlot = editSlot.current.some(item => item.key === p.key);
                         const dbItem = dbProducts.find(d => d.sku === p.key);
+                        const isPending = pendingAdd === p.key;
                         return (
                           <button
                             key={p.key}
                             className={`text-xs font-medium px-3 py-2 rounded-lg border transition-all text-left relative ${
-                              isInSlot ? 'ring-2 ring-green-500 scale-[1.02]' : 'hover:scale-[1.02]'
+                              isPending
+                                ? 'ring-2 ring-blue-500 border-blue-300 bg-blue-50'
+                                : isInSlot
+                                  ? 'ring-2 ring-green-500 border-green-300 bg-green-50 scale-[1.02]'
+                                  : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-100'
                             }`}
-                            style={{ backgroundColor: p.bg, color: p.fg, borderColor: 'rgba(0,0,0,0.1)' }}
                             onClick={() => {
-                              if (editSlot.current.length === 0) {
-                                // 빈 슬롯이면 바로 세팅
-                                handleSlotSet(p.key);
-                              } else if (isInSlot) {
+                              if (isInSlot) {
                                 // 이미 있으면 제거
                                 handleSlotRemove(p.key);
                               } else {
-                                // 추가
-                                handleSlotAdd(p.key);
+                                // 수량 입력 패널 표시
+                                setPendingAdd(p.key);
+                                setPendingQty(1);
                               }
                             }}
                           >
-                            <span>{p.full}</span>
+                            <span className={isInSlot ? 'text-green-800' : 'text-slate-800'}>{p.full}</span>
                             {dbItem && (
-                              <span className="block text-[10px] opacity-70 mt-0.5">
+                              <span className={`block text-[10px] mt-0.5 ${isInSlot ? 'text-green-600' : 'text-slate-400'}`}>
                                 재고 {dbItem.quantity}
                               </span>
                             )}
                             {isInSlot && (
-                              <span className="absolute top-1 right-1 text-[10px]">✓</span>
+                              <span className="absolute top-1 right-1 text-[10px] text-green-600">✓</span>
                             )}
                           </button>
                         );
