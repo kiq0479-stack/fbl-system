@@ -280,16 +280,8 @@ export default function RackMapPage() {
               </div>
 
               {sec.passage && (
-                <div className="flex items-center justify-center py-1 mb-1">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <span className="text-[10px]">▲</span>
-                    <div className="flex gap-0.5">
-                      {[...Array(5)].map((_, i) => (
-                        <div key={i} className="w-3 h-3 border border-slate-300 rounded-sm" />
-                      ))}
-                    </div>
-                    <span className="text-[10px]">▼</span>
-                  </div>
+                <div className="flex items-center justify-center py-1.5 mb-1">
+                  <span className="text-xs text-slate-400 font-medium tracking-widest">— 통로 —</span>
                 </div>
               )}
             </div>
