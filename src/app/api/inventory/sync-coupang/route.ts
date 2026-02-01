@@ -2,6 +2,19 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getRocketGrowthInventory, getCoupangAccounts } from '@/lib/coupang';
 
+// 쿠팡 API 동시 호출 최대 10개 (15개부터 429 에러)
+const BATCH_SIZE = 10;
+
+async function batchParallel<T>(items: T[], fn: (item: T) => Promise<any>): Promise<any[]> {
+  const results: any[] = [];
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = items.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(batch.map(fn));
+    results.push(...batchResults);
+  }
+  return results;
+}
+
 export async function POST() {
   try {
     const supabase = await createClient();
@@ -22,36 +35,30 @@ export async function POST() {
       existingMap.set(inv.product_id, { id: inv.id, quantity: inv.quantity });
     }
 
-    // 2. 모든 상품 × 모든 계정 동시 병렬 조회 (33개 × 2계정 = ~66건, 동시 실행)
+    // 2. 계정별 → 상품 10개씩 병렬 조회
     const inventoryMap = new Map<string, number>();
-    const skuList = products.map((p: any) => p.sku).filter(Boolean);
+    const skuList: string[] = products.map((p: any) => p.sku).filter(Boolean);
 
-    await Promise.all(accounts.map(async (account) => {
+    for (const account of accounts) {
       const config = {
         vendorId: account.vendorId,
         accessKey: account.accessKey,
         secretKey: account.secretKey,
       };
 
-      const results = await Promise.all(
-        skuList.map(async (sku: string) => {
-          try {
-            const res = await getRocketGrowthInventory(config, config.vendorId, { vendorItemId: sku });
-            if (res.data?.[0]) {
-              return { sku, qty: res.data[0].inventoryDetails?.totalOrderableQuantity || 0 };
+      await batchParallel(skuList, async (sku: string) => {
+        try {
+          const res = await getRocketGrowthInventory(config, config.vendorId, { vendorItemId: sku });
+          if (res.data?.[0]) {
+            const qty = res.data[0].inventoryDetails?.totalOrderableQuantity || 0;
+            if (qty > 0) {
+              const prev = inventoryMap.get(sku) || 0;
+              if (qty > prev) inventoryMap.set(sku, qty);
             }
-          } catch {}
-          return null;
-        })
-      );
-
-      for (const r of results) {
-        if (r && r.qty > 0) {
-          const prev = inventoryMap.get(r.sku) || 0;
-          if (r.qty > prev) inventoryMap.set(r.sku, r.qty);
-        }
-      }
-    }));
+          }
+        } catch {}
+      });
+    }
 
     // 3. 변경사항 계산
     const toInsert: any[] = [];
