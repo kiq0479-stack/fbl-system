@@ -230,7 +230,7 @@ export default function RackMapPage() {
         <div className="min-w-[600px]">
           {sections.map((sec, si) => (
             <div key={si}>
-              <div className="border-[3px] border-slate-800 rounded-lg overflow-hidden mb-1">
+              <div className="border-2 border-slate-700 rounded-lg overflow-hidden mb-1">
                 {sec.rows.map((row, ri) => (
                   <div
                     key={ri}
