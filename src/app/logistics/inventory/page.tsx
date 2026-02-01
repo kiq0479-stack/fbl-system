@@ -757,7 +757,7 @@ export default function InventoryPage() {
                 {locationFilter === 'warehouse' && activeTab === 'product' && (
                   <th className="px-3 sm:px-6 py-2 sm:py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">파렛트</th>
                 )}
-                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">랙 위치</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">랙 위치</th>
                 <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">최종 수정</th>
                 {locationFilter === 'warehouse' && (activeTab === 'product' || activeTab === 'supply') && (
                   <th className="px-3 sm:px-6 py-2 sm:py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">수정</th>
@@ -801,7 +801,7 @@ export default function InventoryPage() {
                         ) : '-'}
                       </td>
                     )}
-                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-slate-500 font-mono whitespace-nowrap">{item.rack_position || '-'}</td>
+                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-slate-500 font-mono whitespace-nowrap text-center">{item.rack_position || '-'}</td>
                     <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm text-slate-400 whitespace-nowrap hidden sm:table-cell">{new Date(item.updated_at).toLocaleDateString('ko-KR')}</td>
                     {locationFilter === 'warehouse' && activeTab === 'product' && (
                       <td className="px-3 sm:px-6 py-2 sm:py-4 text-center">
