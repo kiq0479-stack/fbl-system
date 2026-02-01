@@ -14,8 +14,8 @@ export async function POST() {
     const accounts = getCoupangAccounts();
 
     // 1. DB에서 등록된 상품 목록 가져오기
-    const { data: products } = await supabase
-      .from('products')
+    const { data: products } = await (supabase
+      .from('products') as any)
       .select('id, sku, name');
 
     if (!products || products.length === 0) {
