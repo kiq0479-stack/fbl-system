@@ -1,137 +1,210 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 // ============================================================
-// 상품 정의 — DB 창고 재고 기준
+// 타입 정의
 // ============================================================
-type ProductDef = { key: string; full: string; brand: '키들' | '쉴트' | '기타'; bg: string; fg: string };
+type ProductDef = { key: string; full: string; brand: string; category?: string; bg: string; fg: string; type: 'product' | 'supply' };
 
-const PRODUCTS: ProductDef[] = [
-  // 키들 (DB 창고 재고에 있는 상품)
-  { key: '기저귀', full: '기저귀 갈이대',     brand: '키들', bg: '#fb7185', fg: '#fff' },
-  { key: 'B3책',  full: '베이직 3단 책장',    brand: '키들', bg: '#38bdf8', fg: '#fff' },
-  { key: 'B3',    full: '베이직 3단',         brand: '키들', bg: '#0ea5e9', fg: '#fff' },
-  { key: 'B4책',  full: '베이직 4단 책장',    brand: '키들', bg: '#60a5fa', fg: '#fff' },
-  { key: 'B4',    full: '베이직 4단',         brand: '키들', bg: '#3b82f6', fg: '#fff' },
-  { key: '전면',  full: '전면 책장 책꽂이',    brand: '키들', bg: '#818cf8', fg: '#fff' },
-  { key: '옷장',  full: '옷장',              brand: '키들', bg: '#f59e0b', fg: '#fff' },
-  { key: '3화',   full: '3단 계단 화이트',    brand: '키들', bg: '#e2e8f0', fg: '#334155' },
-  { key: '3브',   full: '3단 계단 브라운',    brand: '키들', bg: '#b45309', fg: '#fff' },
-  { key: '2브',   full: '2단 계단 브라운',    brand: '키들', bg: '#d97706', fg: '#fff' },
-  { key: '흔말',  full: '흔들말 브라운',      brand: '키들', bg: '#f97316', fg: '#fff' },
-  // 쉴트 (편집 모달에서 선택 가능)
-  { key: '캣휠',  full: '캣휠',              brand: '쉴트', bg: '#facc15', fg: '#713f12' },
-  { key: '스팽',  full: '스팽글',             brand: '쉴트', bg: '#a78bfa', fg: '#fff' },
-  { key: '그립',  full: '스마트 그립톡',      brand: '쉴트', bg: '#2dd4bf', fg: '#fff' },
-  { key: '폰케',  full: '폰케이스',           brand: '쉴트', bg: '#99f6e4', fg: '#134e4a' },
-  { key: '키링',  full: '키링류',             brand: '쉴트', bg: '#5eead4', fg: '#134e4a' },
+type Row = { label: string; slots: string[][] };
+type Section = { rows: Row[]; passage?: boolean };
+
+type DbProduct = {
+  id: string;
+  name: string;
+  sku: string;
+  category: string;
+  type: 'product' | 'supply';
+  quantity: number;
+};
+
+// ============================================================
+// 하드코딩 PRODUCTS — fallback 스타일 레지스트리
+// ============================================================
+const HARDCODED_PRODUCTS: ProductDef[] = [
+  // 키들
+  { key: '기저귀', full: '기저귀 갈이대',     brand: '키들', bg: '#fb7185', fg: '#fff', type: 'product' },
+  { key: 'B3책',  full: '베이직 3단 책장',    brand: '키들', bg: '#38bdf8', fg: '#fff', type: 'product' },
+  { key: 'B3',    full: '베이직 3단',         brand: '키들', bg: '#0ea5e9', fg: '#fff', type: 'product' },
+  { key: 'B4책',  full: '베이직 4단 책장',    brand: '키들', bg: '#60a5fa', fg: '#fff', type: 'product' },
+  { key: 'B4',    full: '베이직 4단',         brand: '키들', bg: '#3b82f6', fg: '#fff', type: 'product' },
+  { key: '전면',  full: '전면 책장 책꽂이',    brand: '키들', bg: '#818cf8', fg: '#fff', type: 'product' },
+  { key: '옷장',  full: '옷장',              brand: '키들', bg: '#f59e0b', fg: '#fff', type: 'product' },
+  { key: '3화',   full: '3단 계단 화이트',    brand: '키들', bg: '#e2e8f0', fg: '#334155', type: 'product' },
+  { key: '3브',   full: '3단 계단 브라운',    brand: '키들', bg: '#b45309', fg: '#fff', type: 'product' },
+  { key: '2브',   full: '2단 계단 브라운',    brand: '키들', bg: '#d97706', fg: '#fff', type: 'product' },
+  { key: '흔말',  full: '흔들말 브라운',      brand: '키들', bg: '#f97316', fg: '#fff', type: 'product' },
+  // 쉴트
+  { key: '캣휠',  full: '캣휠',              brand: '쉴트', bg: '#facc15', fg: '#713f12', type: 'product' },
+  { key: '스팽',  full: '스팽글',             brand: '쉴트', bg: '#a78bfa', fg: '#fff', type: 'product' },
+  { key: '그립',  full: '스마트 그립톡',      brand: '쉴트', bg: '#2dd4bf', fg: '#fff', type: 'product' },
+  { key: '폰케',  full: '폰케이스',           brand: '쉴트', bg: '#99f6e4', fg: '#134e4a', type: 'product' },
+  { key: '키링',  full: '키링류',             brand: '쉴트', bg: '#5eead4', fg: '#134e4a', type: 'product' },
   // 기타
-  { key: '기타',  full: '기타 물품',          brand: '기타', bg: '#cbd5e1', fg: '#475569' },
-  { key: '부자재', full: '부자재',            brand: '기타', bg: '#d8b4fe', fg: '#581c87' },
+  { key: '기타',  full: '기타 물품',          brand: '기타', bg: '#cbd5e1', fg: '#475569', type: 'product' },
+  { key: '부자재', full: '부자재',            brand: '기타', bg: '#d8b4fe', fg: '#581c87', type: 'supply' },
 ];
 
-const P_MAP = Object.fromEntries(PRODUCTS.map(p => [p.key, p]));
-const getP = (key: string) => P_MAP[key] || { key, full: key, brand: '기타' as const, bg: '#e5e7eb', fg: '#374151' };
-
-const BRAND_ICONS: Record<string, string> = { '키들': '🧸', '쉴트': '🛡️', '기타': '📦' };
-const BRAND_ORDER = ['키들', '쉴트', '기타'] as const;
+const HARDCODED_MAP = Object.fromEntries(HARDCODED_PRODUCTS.map(p => [p.key, p]));
 
 // ============================================================
-// 엑셀 레이아웃 — DB에 없는 항목은 빈칸 처리
+// 카테고리/브랜드 → 색상 자동 할당
 // ============================================================
-const _ = '';
-type Row = { label: string; slots: string[] };
-type Section = { rows: Row[]; passage?: boolean };
+const CATEGORY_COLORS: Record<string, { bg: string; fg: string }> = {
+  '키즈가구':  { bg: '#38bdf8', fg: '#fff' },
+  '안전용품':  { bg: '#fb7185', fg: '#fff' },
+  '펫용품':    { bg: '#facc15', fg: '#713f12' },
+  '모바일액세서리': { bg: '#2dd4bf', fg: '#fff' },
+  '생활용품':  { bg: '#a78bfa', fg: '#fff' },
+  'supply':    { bg: '#d8b4fe', fg: '#581c87' },
+};
+
+const AUTO_PALETTE = [
+  { bg: '#f87171', fg: '#fff' }, { bg: '#fb923c', fg: '#fff' },
+  { bg: '#fbbf24', fg: '#713f12' }, { bg: '#a3e635', fg: '#1a2e05' },
+  { bg: '#34d399', fg: '#fff' }, { bg: '#22d3ee', fg: '#164e63' },
+  { bg: '#60a5fa', fg: '#fff' }, { bg: '#a78bfa', fg: '#fff' },
+  { bg: '#f472b6', fg: '#fff' }, { bg: '#e879f9', fg: '#fff' },
+];
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function getAutoColor(category: string, sku: string): { bg: string; fg: string } {
+  if (CATEGORY_COLORS[category]) return CATEGORY_COLORS[category];
+  return AUTO_PALETTE[hashStr(sku) % AUTO_PALETTE.length];
+}
+
+// ============================================================
+// 통합 상품 조회 (하드코딩 + DB)
+// ============================================================
+function getP(key: string, dynamicMap: Map<string, ProductDef>): ProductDef {
+  if (HARDCODED_MAP[key]) return HARDCODED_MAP[key];
+  if (dynamicMap.has(key)) return dynamicMap.get(key)!;
+  return { key, full: key, brand: '기타', bg: '#e5e7eb', fg: '#374151', type: 'product' };
+}
+
+const BRAND_ICONS: Record<string, string> = { '키들': '🧸', '쉴트': '🛡️', '부자재': '📦', '기타': '📦' };
+
+// ============================================================
+// 엑셀 레이아웃 — 슬롯당 복수 아이템 지원 (string[][])
+// ============================================================
+const E: string[] = [];    // 빈 슬롯
+const S = (k: string): string[] => [k]; // 단일 아이템 슬롯
 
 const INITIAL_SECTIONS: Section[] = [
   // === Rack A (3→2→1) ===
   { rows: [
-    { label: 'A 3층', slots: [_,_,_,_,_,_, _,_,_,_,_,_,_,_] },
-    { label: 'A 2층', slots: [_,_,_,_,_,_, _,_,_,_,_,_,_,'기저귀'] },
-    { label: 'A 1층', slots: [_,_,_,_,_,_, '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀'] },
+    { label: 'A 3층', slots: [E,E,E,E,E,E, E,E,E,E,E,E,E,E] },
+    { label: 'A 2층', slots: [E,E,E,E,E,E, E,E,E,E,E,E,E,S('기저귀')] },
+    { label: 'A 1층', slots: [E,E,E,E,E,E, S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀')] },
   ], passage: true },
 
   // === Rack B (1→2→3) ===
   { rows: [
-    { label: 'B 1층', slots: [_,_,_,_, '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_] },
-    { label: 'B 2층', slots: [_,_,_,_, _,_,_,_,_,_,_,_, _,_] },
-    { label: 'B 3층', slots: [_,_,_,_, '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_] },
+    { label: 'B 1층', slots: [E,E,E,E, S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'), E,E] },
+    { label: 'B 2층', slots: [E,E,E,E, E,E,E,E,E,E,E,E, E,E] },
+    { label: 'B 3층', slots: [E,E,E,E, S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'), E,E] },
   ] },
 
   // === Rack C (3→2→1) ===
   { rows: [
-    { label: 'C 3층', slots: [_,_,_,_,_,_, 'B4책','B4책','B4책','B4책','B4책','B4책', _,_] },
-    { label: 'C 2층', slots: [_,_,_,_,_,_,_,_,_, 'B4책','B4책','B4책', _,_] },
-    { label: 'C 1층', slots: [_,_, '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_] },
+    { label: 'C 3층', slots: [E,E,E,E,E,E, S('B4책'),S('B4책'),S('B4책'),S('B4책'),S('B4책'),S('B4책'), E,E] },
+    { label: 'C 2층', slots: [E,E,E,E,E,E,E,E,E, S('B4책'),S('B4책'),S('B4책'), E,E] },
+    { label: 'C 1층', slots: [E,E, S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'), E,E] },
   ], passage: true },
 
   // === Rack D (1→2→3) ===
   { rows: [
-    { label: 'D 1층', slots: [_,_,_,_, '기저귀','기저귀','기저귀','기저귀','기저귀','기저귀','기저귀',_, _,_] },
-    { label: 'D 2층', slots: [_,_,'3화','3화', _,_,_,_,_,_,_,_, _,_] },
-    { label: 'D 3층', slots: [_,_, '3화','3화','3화',_,_, 'B4','B4','B4','B4','B4', _,_] },
+    { label: 'D 1층', slots: [E,E,E,E, S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),E, E,E] },
+    { label: 'D 2층', slots: [E,E,S('3화'),S('3화'), E,E,E,E,E,E,E,E, E,E] },
+    { label: 'D 3층', slots: [E,E, S('3화'),S('3화'),S('3화'),E,E, S('B4'),S('B4'),S('B4'),S('B4'),S('B4'), E,E] },
   ] },
 
   // === Rack E (3→2→1) ===
   { rows: [
-    { label: 'E 3층', slots: [_, '2브','3브','3브', _,_, 'B3책','B3책','B3책','B3책','B3책','B3책', _,_] },
-    { label: 'E 2층', slots: [_,_,'3브','3브', 'B3책','B3책','B3책','B3책','B3책','B3책','B3책','B3책', _,_] },
-    { label: 'E 1층', slots: [_,_,_,_, 'B3책','B3책',_, 'B3책','B3책','B3책','B3책','B3책', _,_] },
+    { label: 'E 3층', slots: [E, S('2브'),S('3브'),S('3브'), E,E, S('B3책'),S('B3책'),S('B3책'),S('B3책'),S('B3책'),S('B3책'), E,E] },
+    { label: 'E 2층', slots: [E,E,S('3브'),S('3브'), S('B3책'),S('B3책'),S('B3책'),S('B3책'),S('B3책'),S('B3책'),S('B3책'),S('B3책'), E,E] },
+    { label: 'E 1층', slots: [E,E,E,E, S('B3책'),S('B3책'),E, S('B3책'),S('B3책'),S('B3책'),S('B3책'),S('B3책'), E,E] },
   ], passage: true },
 
   // === Rack F (1→2→3) ===
   { rows: [
-    { label: 'F 1층', slots: [_,_,_,_, _,_,_, 'B3',_,_,_,_, _,_] },
-    { label: 'F 2층', slots: [_,_,'전면','전면', _, 'B3','B3','B3','B3','B3','B3','B3', _,_] },
-    { label: 'F 3층', slots: ['전면','전면',_,_, 'B3','B3','B3','B3','B3','B3','B3','B3', _,_] },
+    { label: 'F 1층', slots: [E,E,E,E, E,E,E, S('B3'),E,E,E,E, E,E] },
+    { label: 'F 2층', slots: [E,E,S('전면'),S('전면'), E, S('B3'),S('B3'),S('B3'),S('B3'),S('B3'),S('B3'),S('B3'), E,E] },
+    { label: 'F 3층', slots: [S('전면'),S('전면'),E,E, S('B3'),S('B3'),S('B3'),S('B3'),S('B3'),S('B3'),S('B3'),S('B3'), E,E] },
   ] },
 
   // === Rack G (3→2→1) ===
   { rows: [
-    { label: 'G 3층', slots: [_,_,_,_,_,_, '흔말','흔말','흔말','흔말','흔말','흔말', _,_] },
-    { label: 'G 2층', slots: [_,_,_,_,_,_,_,_, '흔말','흔말','흔말','흔말', _,_] },
-    { label: 'G 1층', slots: [_,_,_,_, '흔말',_,_,_,_,_,_,_, _,_] },
+    { label: 'G 3층', slots: [E,E,E,E,E,E, S('흔말'),S('흔말'),S('흔말'),S('흔말'),S('흔말'),S('흔말'), E,E] },
+    { label: 'G 2층', slots: [E,E,E,E,E,E,E,E, S('흔말'),S('흔말'),S('흔말'),S('흔말'), E,E] },
+    { label: 'G 1층', slots: [E,E,E,E, S('흔말'),E,E,E,E,E,E,E, E,E] },
   ], passage: true },
 
   // === Rack H (1→2→3) ===
   { rows: [
-    { label: 'H 1층', slots: ['기저귀','기저귀','기저귀','기저귀','기저귀','기저귀', _,_,_,_,_,_,_,_] },
-    { label: 'H 2층', slots: [_,_,_,_, '옷장','옷장','옷장','옷장','옷장','옷장', _,_,_,_] },
-    { label: 'H 3층', slots: ['옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장','옷장'] },
+    { label: 'H 1층', slots: [S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'),S('기저귀'), E,E,E,E,E,E,E,E] },
+    { label: 'H 2층', slots: [E,E,E,E, S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'), E,E,E,E] },
+    { label: 'H 3층', slots: [S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장'),S('옷장')] },
   ] },
 ];
 
 function deepClone<T>(obj: T): T { return JSON.parse(JSON.stringify(obj)); }
 
 // ============================================================
-// 브랜드별 요약
+// 브랜드별 요약 (복수 아이템 슬롯 대응)
 // ============================================================
 type ProductSummary = { key: string; full: string; count: number; bg: string; fg: string };
 type BrandSummary = { brand: string; icon: string; total: number; products: ProductSummary[] };
 
-function getBrandSummary(sections: Section[]): BrandSummary[] {
+function getBrandSummary(sections: Section[], dynamicMap: Map<string, ProductDef>): BrandSummary[] {
   const map = new Map<string, number>();
   sections.forEach(sec => sec.rows.forEach(row => {
-    row.slots.forEach(s => { if (s) map.set(s, (map.get(s) || 0) + 1); });
+    row.slots.forEach(slot => {
+      slot.forEach(key => { if (key) map.set(key, (map.get(key) || 0) + 1); });
+    });
   }));
 
   const brandMap = new Map<string, ProductSummary[]>();
-  BRAND_ORDER.forEach(b => brandMap.set(b, []));
+  const brandSet = new Set<string>();
 
   map.forEach((count, key) => {
-    const p = getP(key);
+    const p = getP(key, dynamicMap);
+    brandSet.add(p.brand);
     if (!brandMap.has(p.brand)) brandMap.set(p.brand, []);
     brandMap.get(p.brand)!.push({ key, full: p.full, count, bg: p.bg, fg: p.fg });
   });
 
   brandMap.forEach(products => products.sort((a, b) => b.count - a.count));
 
-  return BRAND_ORDER.map(brand => ({
-    brand, icon: BRAND_ICONS[brand],
-    total: brandMap.get(brand)!.reduce((s, p) => s + p.count, 0),
-    products: brandMap.get(brand)!,
-  }));
+  const brandOrder = ['키들', '쉴트', ...Array.from(brandSet).filter(b => b !== '키들' && b !== '쉴트').sort()];
+  
+  return brandOrder
+    .filter(brand => brandMap.has(brand) && brandMap.get(brand)!.length > 0)
+    .map(brand => ({
+      brand,
+      icon: BRAND_ICONS[brand] || '📦',
+      total: brandMap.get(brand)!.reduce((s, p) => s + p.count, 0),
+      products: brandMap.get(brand)!,
+    }));
+}
+
+// ============================================================
+// DB 상품 → 브랜드 추론
+// ============================================================
+function inferBrand(name: string, category: string): string {
+  const n = name.toLowerCase();
+  if (['베이직', '기저귀', '책장', '전면', '옷장', '계단', '흔들말', '갈이대'].some(k => n.includes(k))) return '키들';
+  if (['캣휠', '스팽글', '그립톡', '폰케이스', '키링'].some(k => n.includes(k))) return '쉴트';
+  if (category === '키즈가구' || category === '안전용품') return '키들';
+  if (category === '펫용품' || category === '모바일액세서리') return '쉴트';
+  return '기타';
 }
 
 // ============================================================
@@ -142,9 +215,153 @@ export default function RackMapPage() {
   const [highlight, setHighlight] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<{ si: number; ri: number; slotIdx: number } | null>(null);
   const [expandedBrand, setExpandedBrand] = useState<string | null>('키들');
+  const [dbProducts, setDbProducts] = useState<DbProduct[]>([]);
+  const [dbLoading, setDbLoading] = useState(true);
+  const [modalSearch, setModalSearch] = useState('');
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  const brandSummary = getBrandSummary(sections);
+  const supabase = createClient();
+
+  // ── DB에서 창고 재고 상품 가져오기 ──
+  useEffect(() => {
+    const fetchWarehouseProducts = async () => {
+      setDbLoading(true);
+      try {
+        // inventory + products + supplies 조인 쿼리
+        const { data: invData } = await supabase
+          .from('inventory')
+          .select(`
+            *,
+            products (id, name, sku, category, is_active),
+            supplies (id, name, sku)
+          `)
+          .eq('location', 'warehouse')
+          .gt('quantity', 0);
+
+        // 숨긴 상품 SKU 목록 가져오기
+        let hiddenSkus = new Set<string>();
+        try {
+          const saved = localStorage.getItem('fbl-inventory-hidden');
+          if (saved) hiddenSkus = new Set(JSON.parse(saved));
+        } catch { /* ignore */ }
+
+        const items: DbProduct[] = [];
+
+        if (invData) {
+          for (const inv of invData) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const row = inv as any;
+            
+            if (row.product_id && row.products) {
+              const prod = row.products;
+              if (!prod.is_active || hiddenSkus.has(prod.sku)) continue;
+              items.push({
+                id: prod.id,
+                name: prod.name,
+                sku: prod.sku,
+                category: prod.category || '기타',
+                type: 'product',
+                quantity: row.quantity,
+              });
+            } else if (row.supply_id && row.supplies) {
+              const sup = row.supplies;
+              if (hiddenSkus.has(sup.sku)) continue;
+              items.push({
+                id: sup.id,
+                name: sup.name,
+                sku: sup.sku,
+                category: 'supply',
+                type: 'supply',
+                quantity: row.quantity,
+              });
+            }
+          }
+        }
+
+        setDbProducts(items);
+      } catch (err) {
+        console.error('Failed to fetch warehouse products:', err);
+      } finally {
+        setDbLoading(false);
+      }
+    };
+
+    fetchWarehouseProducts();
+  }, []);
+
+  // ── DB 상품 → ProductDef 매핑 (동적 색상 포함) ──
+  const dynamicProductMap = useMemo(() => {
+    const map = new Map<string, ProductDef>();
+    for (const item of dbProducts) {
+      // 하드코딩에 이미 있으면 건너뛰기 (하드코딩 우선)
+      if (HARDCODED_MAP[item.sku]) continue;
+
+      const brand = item.type === 'supply' ? '부자재' : inferBrand(item.name, item.category);
+      const color = getAutoColor(item.category, item.sku);
+      map.set(item.sku, {
+        key: item.sku,
+        full: item.name,
+        brand,
+        category: item.category,
+        bg: color.bg,
+        fg: color.fg,
+        type: item.type,
+      });
+    }
+    return map;
+  }, [dbProducts]);
+
+  // ── 모달용: 브랜드/카테고리별로 그룹핑된 상품 목록 ──
+  const groupedModalProducts = useMemo(() => {
+    const groups = new Map<string, ProductDef[]>();
+
+    // DB 상품을 브랜드별로 그룹핑
+    for (const item of dbProducts) {
+      const existing = HARDCODED_MAP[item.sku];
+      const brand = existing
+        ? existing.brand
+        : item.type === 'supply'
+          ? '부자재'
+          : inferBrand(item.name, item.category);
+
+      if (!groups.has(brand)) groups.set(brand, []);
+
+      const pDef: ProductDef = existing || dynamicProductMap.get(item.sku) || {
+        key: item.sku,
+        full: item.name,
+        brand,
+        bg: '#e5e7eb',
+        fg: '#374151',
+        type: item.type,
+      };
+
+      // 중복 방지
+      if (!groups.get(brand)!.some(p => p.key === pDef.key)) {
+        groups.get(brand)!.push(pDef);
+      }
+    }
+
+    // 하드코딩 상품 중 DB에 없는 것도 fallback으로 추가
+    for (const hp of HARDCODED_PRODUCTS) {
+      const brand = hp.brand;
+      if (!groups.has(brand)) groups.set(brand, []);
+      if (!groups.get(brand)!.some(p => p.key === hp.key)) {
+        groups.get(brand)!.push(hp);
+      }
+    }
+
+    // 브랜드 순서: 키들 → 쉴트 → 부자재 → 나머지
+    const order = ['키들', '쉴트', '부자재', '기타'];
+    const sorted = [...groups.entries()].sort((a, b) => {
+      const ai = order.indexOf(a[0]);
+      const bi = order.indexOf(b[0]);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+
+    return sorted;
+  }, [dbProducts, dynamicProductMap]);
+
+  const brandSummary = getBrandSummary(sections, dynamicProductMap);
   const totalP = brandSummary.reduce((s, b) => s + b.total, 0);
   const totalSlots = sections.reduce((s, sec) => s + sec.rows.reduce((s2, r) => s2 + r.slots.length, 0), 0);
 
@@ -154,32 +371,73 @@ export default function RackMapPage() {
     current: sections[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx],
   } : null;
 
-  const handleSlotChange = useCallback((productKey: string) => {
+  // ── 슬롯에 아이템 추가 ──
+  const handleSlotAdd = useCallback((productKey: string) => {
     if (!editTarget) return;
     setSections(prev => {
       const next = deepClone(prev);
-      next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx] = productKey;
+      const slot = next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx];
+      if (!slot.includes(productKey)) {
+        slot.push(productKey);
+      }
+      return next;
+    });
+  }, [editTarget]);
+
+  // ── 슬롯에서 아이템 제거 ──
+  const handleSlotRemove = useCallback((productKey: string) => {
+    if (!editTarget) return;
+    setSections(prev => {
+      const next = deepClone(prev);
+      const slot = next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx];
+      const idx = slot.indexOf(productKey);
+      if (idx !== -1) slot.splice(idx, 1);
+      return next;
+    });
+  }, [editTarget]);
+
+  // ── 슬롯 전체 비우기 ──
+  const handleSlotClear = useCallback(() => {
+    if (!editTarget) return;
+    setSections(prev => {
+      const next = deepClone(prev);
+      next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx] = [];
       return next;
     });
     setEditTarget(null);
   }, [editTarget]);
 
-  const handleSlotClear = useCallback(() => {
+  // ── 슬롯을 단일 상품으로 교체 (빈 슬롯 클릭 시 빠른 할당) ──
+  const handleSlotSet = useCallback((productKey: string) => {
     if (!editTarget) return;
     setSections(prev => {
       const next = deepClone(prev);
-      next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx] = '';
+      next[editTarget.si].rows[editTarget.ri].slots[editTarget.slotIdx] = [productKey];
       return next;
     });
     setEditTarget(null);
   }, [editTarget]);
+
+  // ── 검색 필터링된 모달 상품 ──
+  const filteredModalProducts = useMemo(() => {
+    if (!modalSearch.trim()) return groupedModalProducts;
+    const q = modalSearch.trim().toLowerCase();
+    return groupedModalProducts
+      .map(([brand, items]) => [brand, items.filter(p => 
+        p.full.toLowerCase().includes(q) || p.key.toLowerCase().includes(q)
+      )] as [string, ProductDef[]])
+      .filter(([, items]) => items.length > 0);
+  }, [groupedModalProducts, modalSearch]);
 
   return (
     <div className="space-y-4">
       {/* 헤더 */}
       <div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900">🏭 창고 랙 도면</h1>
-        <p className="text-xs text-slate-400 mt-0.5">{totalP}P / {totalSlots}슬롯 ({Math.round(totalP/totalSlots*100)}%)</p>
+        <p className="text-xs text-slate-400 mt-0.5">
+          {totalP}P / {totalSlots}슬롯 ({Math.round(totalP/totalSlots*100)}%)
+          {dbLoading && <span className="ml-2 text-blue-400">⏳ 상품 목록 로딩중...</span>}
+        </p>
       </div>
 
       {/* 브랜드별 요약 */}
@@ -242,11 +500,13 @@ export default function RackMapPage() {
                       <span className="text-[9px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">{row.label}</span>
                     </div>
 
-                    {row.slots.map((s, i) => {
-                      const isEmpty = !s;
-                      const p = !isEmpty ? getP(s) : null;
-                      const isHi = highlight && s === highlight;
-                      const isDim = highlight && s !== highlight && !isEmpty;
+                    {row.slots.map((slot, i) => {
+                      const isEmpty = slot.length === 0;
+                      const isMulti = slot.length > 1;
+                      const firstKey = slot[0] || '';
+                      const p = !isEmpty ? getP(firstKey, dynamicProductMap) : null;
+                      const isHi = highlight && slot.includes(highlight);
+                      const isDim = highlight && !slot.includes(highlight) && !isEmpty;
 
                       return (
                         <button
@@ -258,12 +518,25 @@ export default function RackMapPage() {
                             backgroundColor: p ? p.bg : 'transparent',
                             color: p ? p.fg : '',
                             opacity: isDim ? 0.25 : 1,
+                            ...(isMulti ? { 
+                              background: `linear-gradient(135deg, ${getP(slot[0], dynamicProductMap).bg} 50%, ${getP(slot[1], dynamicProductMap).bg} 50%)`,
+                            } : {}),
                           }}
-                          title={isEmpty ? `빈 슬롯 — 클릭하여 추가` : `${p!.full} — 클릭하여 편집`}
+                          title={isEmpty 
+                            ? `빈 슬롯 — 클릭하여 추가` 
+                            : isMulti
+                              ? `${slot.map(k => getP(k, dynamicProductMap).full).join(' + ')} — 클릭하여 편집`
+                              : `${p!.full} — 클릭하여 편집`
+                          }
                           onClick={() => setEditTarget({ si, ri, slotIdx: i })}
                         >
-                          {!isEmpty && (
-                            <span className="text-[6px] sm:text-[8px] font-bold leading-none select-none text-center">{s}</span>
+                          {!isEmpty && !isMulti && (
+                            <span className="text-[6px] sm:text-[8px] font-bold leading-none select-none text-center">{firstKey}</span>
+                          )}
+                          {isMulti && (
+                            <span className="text-[6px] sm:text-[8px] font-bold leading-none select-none text-center">
+                              {slot.length}종
+                            </span>
                           )}
                           {isEmpty && (
                             <span className="text-[8px] text-slate-300 select-none">+</span>
@@ -291,26 +564,70 @@ export default function RackMapPage() {
 
       {/* 슬롯 편집 모달 */}
       {editSlot && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={() => setEditTarget(null)}>
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-sm max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  {editSlot.row.label} · 슬롯 #{editSlot.slotIdx + 1}
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {editSlot.current ? `현재: ${getP(editSlot.current).full}` : '비어있음'}
-                </p>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center" onClick={() => { setEditTarget(null); setModalSearch(''); }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    {editSlot.row.label} · 슬롯 #{editSlot.slotIdx + 1}
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {editSlot.current.length === 0 
+                      ? '비어있음'
+                      : `${editSlot.current.length}개 아이템`
+                    }
+                  </p>
+                </div>
+                <button onClick={() => { setEditTarget(null); setModalSearch(''); }} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <button onClick={() => setEditTarget(null)} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+
+              {/* 현재 슬롯 아이템 표시 */}
+              {editSlot.current.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {editSlot.current.map((key, idx) => {
+                    const p = getP(key, dynamicProductMap);
+                    return (
+                      <div key={`${key}-${idx}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border" style={{ backgroundColor: p.bg + '20', borderColor: p.bg }}>
+                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: p.bg }} />
+                        <span className="text-xs font-medium text-slate-800 flex-1">{p.full}</span>
+                        <button
+                          onClick={() => handleSlotRemove(key)}
+                          className="text-red-400 hover:text-red-600 p-0.5"
+                          title="제거"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 검색 */}
+              <div className="mt-3 relative">
+                <input
+                  type="text"
+                  placeholder="상품 검색..."
+                  value={modalSearch}
+                  onChange={e => setModalSearch(e.target.value)}
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 pl-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <svg className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-              </button>
+              </div>
             </div>
 
             <div className="p-4 space-y-3">
-              {editSlot.current && (
+              {/* 전체 비우기 */}
+              {editSlot.current.length > 0 && (
                 <button
                   onClick={handleSlotClear}
                   className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 border-red-200 text-red-600 hover:bg-red-50 transition-colors text-sm font-medium"
@@ -318,35 +635,71 @@ export default function RackMapPage() {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  비우기
+                  전체 비우기
                 </button>
               )}
 
-              {BRAND_ORDER.map(brand => {
-                const items = PRODUCTS.filter(p => p.brand === brand);
+              {/* DB 로딩 상태 */}
+              {dbLoading && (
+                <div className="text-center py-4 text-sm text-slate-400">
+                  ⏳ 상품 목록을 불러오는 중...
+                </div>
+              )}
+
+              {/* 상품 목록 — 브랜드별 그룹 */}
+              {filteredModalProducts.map(([brand, items]) => {
                 if (items.length === 0) return null;
                 return (
                   <div key={brand}>
                     <div className="text-xs font-semibold text-slate-500 mb-1.5">
-                      {BRAND_ICONS[brand]} {brand}
+                      {BRAND_ICONS[brand] || '📦'} {brand}
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
-                      {items.map(p => (
-                        <button
-                          key={p.key}
-                          className={`text-xs font-medium px-3 py-2 rounded-lg border transition-all text-left ${
-                            editSlot.current === p.key ? 'ring-2 ring-slate-900 scale-[1.02]' : 'hover:scale-[1.02]'
-                          }`}
-                          style={{ backgroundColor: p.bg, color: p.fg, borderColor: 'rgba(0,0,0,0.1)' }}
-                          onClick={() => handleSlotChange(p.key)}
-                        >
-                          {p.full}
-                        </button>
-                      ))}
+                      {items.map(p => {
+                        const isInSlot = editSlot.current.includes(p.key);
+                        const dbItem = dbProducts.find(d => d.sku === p.key);
+                        return (
+                          <button
+                            key={p.key}
+                            className={`text-xs font-medium px-3 py-2 rounded-lg border transition-all text-left relative ${
+                              isInSlot ? 'ring-2 ring-green-500 scale-[1.02]' : 'hover:scale-[1.02]'
+                            }`}
+                            style={{ backgroundColor: p.bg, color: p.fg, borderColor: 'rgba(0,0,0,0.1)' }}
+                            onClick={() => {
+                              if (editSlot.current.length === 0) {
+                                // 빈 슬롯이면 바로 세팅
+                                handleSlotSet(p.key);
+                              } else if (isInSlot) {
+                                // 이미 있으면 제거
+                                handleSlotRemove(p.key);
+                              } else {
+                                // 추가
+                                handleSlotAdd(p.key);
+                              }
+                            }}
+                          >
+                            <span>{p.full}</span>
+                            {dbItem && (
+                              <span className="block text-[10px] opacity-70 mt-0.5">
+                                재고 {dbItem.quantity}
+                              </span>
+                            )}
+                            {isInSlot && (
+                              <span className="absolute top-1 right-1 text-[10px]">✓</span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
               })}
+
+              {filteredModalProducts.length === 0 && !dbLoading && (
+                <div className="text-center py-4 text-sm text-slate-400">
+                  검색 결과가 없습니다
+                </div>
+              )}
             </div>
           </div>
         </div>
