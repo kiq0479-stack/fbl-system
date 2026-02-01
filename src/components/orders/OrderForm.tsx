@@ -253,7 +253,7 @@ export default function OrderForm({ onClose, onSuccess }: OrderFormProps) {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="상품명 또는 SKU로 검색하여 추가..."
+                  placeholder="상품명 또는 옵션ID로 검색하여 추가..."
                   className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
                 />
                 <svg className="w-5 h-5 text-slate-400 absolute left-3 top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -276,7 +276,7 @@ export default function OrderForm({ onClose, onSuccess }: OrderFormProps) {
                         >
                           <div>
                             <div className="font-medium text-slate-900 group-hover:text-blue-700">{product.name}</div>
-                            <div className="text-xs text-slate-500">SKU: {product.sku}</div>
+                            <div className="text-xs text-slate-500">옵션ID: {product.sku}</div>
                           </div>
                           <div className="text-xs text-slate-400 group-hover:text-blue-600">추가 +</div>
                         </li>

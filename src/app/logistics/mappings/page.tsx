@@ -371,7 +371,7 @@ export default function MappingsPage() {
                         {mapping.products?.name || '-'}
                       </div>
                       <div className="text-xs text-slate-500">
-                        SKU: {mapping.products?.sku || '-'}
+                        옵션ID: {mapping.products?.sku || '-'}
                       </div>
                     </td>
                     <td className="px-4 py-3">

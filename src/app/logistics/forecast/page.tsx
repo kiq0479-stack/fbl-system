@@ -165,7 +165,7 @@ export default function ForecastPage() {
     
     // CSV 형식으로 생성
     const headers = [
-      '카테고리', '상품명', 'SKU', '총수량', '창고', '쿠팡',
+      '카테고리', '상품명', '옵션ID', '총수량', '창고', '쿠팡',
       '7일', '30일', '60일', '90일', '120일',
       '60일필요', '90일필요', '120일필요', '쿠팡40일필요', '품절위험'
     ];
@@ -289,7 +289,7 @@ export default function ForecastPage() {
         <div className="flex items-center gap-2">
           <input
             type="text"
-            placeholder="상품명, SKU 검색..."
+            placeholder="상품명, 옵션ID 검색..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

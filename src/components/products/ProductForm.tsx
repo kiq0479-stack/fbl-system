@@ -114,7 +114,7 @@ export default function ProductForm({ onClose, onSuccess, initialData, factories
             </div>
             
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase">모델명 <span className="text-red-500">*</span></label>
+              <label className="text-xs font-semibold text-slate-500 uppercase">옵션ID <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="sku"
@@ -122,7 +122,7 @@ export default function ProductForm({ onClose, onSuccess, initialData, factories
                 value={formData.sku}
                 onChange={handleChange}
                 className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 font-mono"
-                placeholder="SKU-001"
+                placeholder="92314923086"
               />
             </div>
 

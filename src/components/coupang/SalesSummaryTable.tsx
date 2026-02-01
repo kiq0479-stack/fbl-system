@@ -201,7 +201,7 @@ export default function SalesSummaryTable() {
                         <span>
                           <span className="font-medium text-slate-900 break-keep">{group.productName}</span>
                           {group.sku && (
-                            <span className="block text-xs text-slate-400 mt-0.5">SKU: {group.sku}</span>
+                            <span className="block text-xs text-slate-400 mt-0.5">옵션ID: {group.sku}</span>
                           )}
                         </span>
                       </button>
