@@ -93,6 +93,23 @@ function getP(key: string, dynamicMap: Map<string, ProductDef>): ProductDef {
 const BRAND_ICONS: Record<string, string> = { '키들': '🧸', '쉴트': '🛡️', '부자재': '📦' };
 
 // ============================================================
+// 슬롯 표시용 짧은 레이블 생성
+// ============================================================
+function getSlotLabel(key: string, dynamicMap: Map<string, ProductDef>): string {
+  // 하드코딩 상품은 key가 이미 약자
+  if (HARDCODED_MAP[key]) return key;
+  // DB 상품은 이름에서 짧은 레이블 생성
+  const p = dynamicMap.get(key);
+  if (!p) return key;
+  const name = p.full;
+  if (name.length <= 3) return name;
+  // 공백으로 분리해서 첫 단어 사용
+  const parts = name.split(/\s+/);
+  if (parts[0].length <= 4) return parts[0];
+  return name.slice(0, 3);
+}
+
+// ============================================================
 // 엑셀 레이아웃 — 슬롯당 복수 아이템 지원 (SlotItem[][])
 // ============================================================
 const E: SlotItem[] = [];    // 빈 슬롯
@@ -563,7 +580,7 @@ export default function RackMapPage() {
                         >
                           {!isEmpty && !isMulti && (
                             <span className="text-[6px] sm:text-[8px] font-bold leading-tight select-none text-center">
-                              {firstItem.key}
+                              {getSlotLabel(firstItem.key, dynamicProductMap)}
                               {firstItem.qty > 1 && (
                                 <span className="block text-[5px] sm:text-[7px] opacity-80">×{firstItem.qty}</span>
                               )}
