@@ -6,7 +6,7 @@ import { Database } from '@/types/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 type Product = Database['public']['Tables']['products']['Row'];
-type SupplierType = Database['public']['Enums']['supplier_type'];
+type Factory = Database['public']['Tables']['factories']['Row'];
 type OrderStatus = Database['public']['Enums']['order_status'];
 
 interface OrderFormProps {
@@ -23,7 +23,8 @@ interface OrderItemInput {
 
 export default function OrderForm({ onClose, onSuccess }: OrderFormProps) {
   const [loading, setLoading] = useState(false);
-  const [supplier, setSupplier] = useState<SupplierType>('YOUBEICHEN');
+  const [factories, setFactories] = useState<Factory[]>([]);
+  const [factoryId, setFactoryId] = useState<string>('');
   const [shipName, setShipName] = useState('');
   const [etd, setEtd] = useState('');
   const [eta, setEta] = useState('');
@@ -44,6 +45,17 @@ export default function OrderForm({ onClose, onSuccess }: OrderFormProps) {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     setOrderNumber(`PO-${date}-${random}`);
+
+    // Fetch factories for supplier dropdown
+    const fetchFactories = async () => {
+      const { data } = await supabase
+        .from('factories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      setFactories(data || []);
+    };
+    fetchFactories();
   }, []);
 
   useEffect(() => {
@@ -115,12 +127,17 @@ export default function OrderForm({ onClose, onSuccess }: OrderFormProps) {
 
     try {
       // 1. Create Order
+      // Find selected factory name for backward compat supplier field
+      const selectedFactory = factories.find(f => f.id === factoryId);
+      const supplierName = selectedFactory?.name?.toUpperCase() || 'OTHER';
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: orderData, error: orderError } = await (supabase as any)
         .from('orders')
         .insert({
           order_number: orderNumber,
-          supplier,
+          supplier: supplierName,
+          factory_id: factoryId || null,
           status: 'requested',
           ship_name: shipName || null,
           etd: etd || null,
@@ -187,13 +204,14 @@ export default function OrderForm({ onClose, onSuccess }: OrderFormProps) {
             <div className="space-y-1">
               <label className="text-sm font-semibold text-slate-700">공장 (Supplier)</label>
               <select
-                value={supplier}
-                onChange={(e) => setSupplier(e.target.value as SupplierType)}
+                value={factoryId}
+                onChange={(e) => setFactoryId(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
               >
-                <option value="YOUBEICHEN">YOUBEICHEN</option>
-                <option value="QUYATIMEBABY">QUYATIMEBABY</option>
-                <option value="OTHER">기타</option>
+                <option value="">선택하세요</option>
+                {factories.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
               </select>
             </div>
             <div className="space-y-1">

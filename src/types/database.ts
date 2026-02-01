@@ -220,6 +220,7 @@ export interface Database {
           id: string
           order_number: string
           supplier: SupplierType
+          factory_id: string | null
           status: OrderStatus
           ship_name: string | null
           etd: string | null
@@ -236,6 +237,7 @@ export interface Database {
           id?: string
           order_number: string
           supplier: SupplierType
+          factory_id?: string | null
           status?: OrderStatus
           ship_name?: string | null
           etd?: string | null
@@ -252,6 +254,7 @@ export interface Database {
           id?: string
           order_number?: string
           supplier?: SupplierType
+          factory_id?: string | null
           status?: OrderStatus
           ship_name?: string | null
           etd?: string | null

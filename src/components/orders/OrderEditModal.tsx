@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Database } from '@/types/database';
 
 type Order = Database['public']['Tables']['orders']['Row'];
-type SupplierType = Database['public']['Enums']['supplier_type'];
+type Factory = Database['public']['Tables']['factories']['Row'];
 type OrderStatus = Database['public']['Enums']['order_status'];
 
 interface OrderEditModalProps {
@@ -22,7 +22,8 @@ const STATUS_OPTIONS: { label: string; value: OrderStatus }[] = [
 
 export default function OrderEditModal({ order, onClose, onSuccess }: OrderEditModalProps) {
   const [loading, setLoading] = useState(false);
-  const [supplier, setSupplier] = useState<SupplierType>(order.supplier);
+  const [factories, setFactories] = useState<Factory[]>([]);
+  const [factoryId, setFactoryId] = useState<string>(order.factory_id || '');
   const [status, setStatus] = useState<OrderStatus>(order.status);
   const [shipName, setShipName] = useState(order.ship_name || '');
   const [etd, setEtd] = useState(order.etd || '');
@@ -30,16 +31,34 @@ export default function OrderEditModal({ order, onClose, onSuccess }: OrderEditM
   const [totalCbm, setTotalCbm] = useState(order.total_cbm || 0);
   const [totalAmountUsd, setTotalAmountUsd] = useState(order.total_amount_usd || 0);
 
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchFactories = async () => {
+      const { data } = await supabase
+        .from('factories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      setFactories(data || []);
+    };
+    fetchFactories();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
+    // Find selected factory name for supplier field (backward compat)
+    const selectedFactory = factories.find(f => f.id === factoryId);
+    const supplierName = selectedFactory?.name?.toUpperCase() || 'OTHER';
+
     try {
-      const supabase = createClient();
       const { error } = await (supabase
         .from('orders') as any)
         .update({
-          supplier,
+          factory_id: factoryId || null,
+          supplier: supplierName,
           status,
           ship_name: shipName || null,
           etd: etd || null,
@@ -91,17 +110,18 @@ export default function OrderEditModal({ order, onClose, onSuccess }: OrderEditM
             </select>
           </div>
 
-          {/* Supplier */}
+          {/* Factory (Supplier) */}
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-700">공장 (Supplier)</label>
             <select
-              value={supplier}
-              onChange={(e) => setSupplier(e.target.value as SupplierType)}
+              value={factoryId}
+              onChange={(e) => setFactoryId(e.target.value)}
               className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm"
             >
-              <option value="YOUBEICHEN">YOUBEICHEN</option>
-              <option value="QUYATIMEBABY">QUYATIMEBABY</option>
-              <option value="OTHER">기타</option>
+              <option value="">선택하세요</option>
+              {factories.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
             </select>
           </div>
 
