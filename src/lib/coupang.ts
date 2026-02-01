@@ -185,19 +185,33 @@ export async function coupangRequest<T>(
 
   const agent = getProxyAgent();
 
-  const response = await nodeFetch(`${COUPANG_API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    agent,
-  });
+  // Per-request timeout (10s) to prevent indefinite hangs from proxy issues
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Coupang API Error: ${response.status} - ${errorText}`);
+  try {
+    const response = await nodeFetch(`${COUPANG_API_URL}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      agent,
+      signal: controller.signal as any,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Coupang API Error: ${response.status} - ${errorText}`);
+    }
+
+    return response.json() as Promise<T>;
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Coupang API Timeout: request to ${basePath} timed out after 10s`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return response.json() as Promise<T>;
 }
 
 // ============================================================================
