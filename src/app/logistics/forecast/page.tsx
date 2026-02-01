@@ -22,9 +22,9 @@ interface ForecastItem {
   coupang_need_40d: number;
   stockout_risk: boolean;
   by_source: {
-    naver: { d7: number; d30: number; d60: number; d120: number };
-    coupang_seller: { d7: number; d30: number; d60: number; d120: number };
-    coupang_rocket: { d7: number; d30: number; d60: number; d120: number };
+    naver: { d7: number; d30: number; d60: number; d90: number; d120: number };
+    coupang_seller: { d7: number; d30: number; d60: number; d90: number; d120: number };
+    coupang_rocket: { d7: number; d30: number; d60: number; d90: number; d120: number };
   };
 }
 
@@ -438,7 +438,7 @@ export default function ForecastPage() {
                           <td className="px-2 sm:px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d7)}</td>
                           <td className="px-2 sm:px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d30)}</td>
                           <td className="px-2 sm:px-4 py-1.5 text-right text-xs font-medium bg-yellow-50/50">{formatNumber(ch.s.d60)}</td>
-                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs">-</td>
+                          <td className="px-2 sm:px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d90)}</td>
                           <td className="px-2 sm:px-4 py-1.5 text-right text-xs">{formatNumber(ch.s.d120)}</td>
                           <td className="px-2 sm:px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>
                           <td className="px-2 sm:px-4 py-1.5 text-right text-xs bg-orange-50/50">-</td>

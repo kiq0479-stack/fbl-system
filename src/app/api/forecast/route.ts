@@ -533,9 +533,9 @@ export async function GET(request: NextRequest) {
         coupang_need_40d: coupangNeed40d,
         stockout_risk: stockoutRisk,
         by_source: {
-          naver: { d7: sourceSales.naver.d7, d30: sourceSales.naver.d30, d60: sourceSales.naver.d60, d120: sourceSales.naver.d120 },
-          coupang_seller: { d7: sourceSales.coupang_seller.d7, d30: sourceSales.coupang_seller.d30, d60: sourceSales.coupang_seller.d60, d120: sourceSales.coupang_seller.d120 },
-          coupang_rocket: { d7: sourceSales.coupang_rocket.d7, d30: sourceSales.coupang_rocket.d30, d60: sourceSales.coupang_rocket.d60, d120: sourceSales.coupang_rocket.d120 },
+          naver: { d7: sourceSales.naver.d7, d30: sourceSales.naver.d30, d60: sourceSales.naver.d60, d90: sourceSales.naver.d90, d120: sourceSales.naver.d120 },
+          coupang_seller: { d7: sourceSales.coupang_seller.d7, d30: sourceSales.coupang_seller.d30, d60: sourceSales.coupang_seller.d60, d90: sourceSales.coupang_seller.d90, d120: sourceSales.coupang_seller.d120 },
+          coupang_rocket: { d7: sourceSales.coupang_rocket.d7, d30: sourceSales.coupang_rocket.d30, d60: sourceSales.coupang_rocket.d60, d90: sourceSales.coupang_rocket.d90, d120: sourceSales.coupang_rocket.d120 },
         },
       };
     });
