@@ -285,8 +285,8 @@ export default function ForecastPage() {
       )}
 
       {/* 필터 */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div className="flex items-center gap-2 flex-1">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
           <input
             type="text"
             placeholder="상품명, SKU 검색..."
@@ -299,37 +299,39 @@ export default function ForecastPage() {
           )}
         </div>
 
-        <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
-          <input
-            type="checkbox"
-            checked={onlyRisk}
-            onChange={(e) => setOnlyRisk(e.target.checked)}
-            className="w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-red-500"
-          />
-          <span className="text-sm font-medium text-slate-700">품절 위험만</span>
-        </label>
-
-        <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
-          <input
-            type="checkbox"
-            checked={showHideButtons}
-            onChange={(e) => setShowHideButtons(e.target.checked)}
-            className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
-          />
-          <span className="text-sm font-medium text-slate-700">숨김 버튼</span>
-        </label>
-
-        {hiddenCount > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
             <input
               type="checkbox"
-              checked={showHidden}
-              onChange={(e) => setShowHidden(e.target.checked)}
+              checked={onlyRisk}
+              onChange={(e) => setOnlyRisk(e.target.checked)}
+              className="w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-red-500"
+            />
+            <span className="text-sm font-medium text-slate-700">품절 위험만</span>
+          </label>
+
+          <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+            <input
+              type="checkbox"
+              checked={showHideButtons}
+              onChange={(e) => setShowHideButtons(e.target.checked)}
               className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
             />
-            <span className="text-sm font-medium text-slate-700">숨긴 상품 ({hiddenCount})</span>
+            <span className="text-sm font-medium text-slate-700">숨김 버튼</span>
           </label>
-        )}
+
+          {hiddenCount > 0 && (
+            <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+              <input
+                type="checkbox"
+                checked={showHidden}
+                onChange={(e) => setShowHidden(e.target.checked)}
+                className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
+              />
+              <span className="text-sm font-medium text-slate-700">숨긴 상품 ({hiddenCount})</span>
+            </label>
+          )}
+        </div>
       </div>
 
       {/* 에러 표시 */}
