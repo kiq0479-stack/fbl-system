@@ -645,12 +645,6 @@ export default function InventoryPage() {
             <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600 p-2">✕</button>
           )}
         </div>
-        <button
-          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm text-slate-600 flex items-center justify-center gap-1 whitespace-nowrap"
-        >
-          상품명 {sortOrder === 'asc' ? '↑' : '↓'}
-        </button>
       </div>
 
       {/* 테이블 */}
@@ -660,7 +654,7 @@ export default function InventoryPage() {
           <table className="w-full min-w-[700px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">상품명</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>상품명 {sortOrder === 'asc' ? '↑' : '↓'}</th>
                 <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">옵션ID</th>
                 <th className="px-3 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">수량</th>
                 <th className="px-3 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">박스</th>
@@ -702,8 +696,8 @@ export default function InventoryPage() {
           <table className="w-full min-w-[600px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap min-w-[120px]">
-                  {activeTab === 'product' ? '상품명' : '부자재명'}
+                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap min-w-[120px] cursor-pointer hover:text-slate-800 select-none" onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>
+                  {activeTab === 'product' ? '상품명' : '부자재명'} {sortOrder === 'asc' ? '↑' : '↓'}
                 </th>
                 <th className="px-2 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">창고</th>
                 <th className="px-2 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">쿠팡</th>
@@ -749,8 +743,8 @@ export default function InventoryPage() {
           <table className="w-full min-w-[500px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className={`px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider ${activeTab === 'supply' ? 'max-w-[160px]' : 'min-w-[120px]'}`}>
-                  {activeTab === 'product' ? '상품명' : '부자재명'}
+                <th className={`px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-800 select-none ${activeTab === 'supply' ? 'max-w-[160px]' : 'min-w-[120px]'}`} onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>
+                  {activeTab === 'product' ? '상품명' : '부자재명'} {sortOrder === 'asc' ? '↑' : '↓'}
                 </th>
                 <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">옵션ID</th>
                 <th className="px-3 sm:px-6 py-2 sm:py-4 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">수량</th>
