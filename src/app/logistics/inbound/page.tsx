@@ -135,29 +135,42 @@ export default function InboundPage() {
 
   const supabaseClient = createClient();
 
-  // 옵션ID로 상품명 자동 조회
+  // 옵션ID로 상품명 자동 조회 (products.sku → products.name)
   const lookupProductByOptionId = useCallback(async (optionId: string, palletNum: number, itemIndex: number) => {
     if (!optionId.trim()) return;
+    const trimmed = optionId.trim();
     try {
-      const { data } = await supabaseClient
-        .from('product_mappings')
-        .select('external_option_name, products(name)')
-        .eq('external_option_id', optionId.trim())
+      // 1차: products.sku 정확히 매칭
+      let { data } = await supabaseClient
+        .from('products')
+        .select('name')
+        .eq('sku', trimmed)
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (data) {
-        const productName = (data as any).products?.name || (data as any).external_option_name || '';
-        if (productName) {
-          const currentItems = [...(palletItems[palletNum] || [])];
+      // 2차: products.external_sku로 시도
+      if (!data) {
+        const res = await supabaseClient
+          .from('products')
+          .select('name')
+          .eq('external_sku', trimmed)
+          .limit(1)
+          .maybeSingle();
+        data = res.data;
+      }
+
+      const productName = (data as any)?.name;
+      if (productName) {
+        setPalletItems(prev => {
+          const currentItems = [...(prev[palletNum] || [])];
           currentItems[itemIndex] = { ...currentItems[itemIndex], product_name: productName };
-          setPalletItems(prev => ({ ...prev, [palletNum]: currentItems }));
-        }
+          return { ...prev, [palletNum]: currentItems };
+        });
       }
     } catch {
       // 매칭 없으면 무시
     }
-  }, [palletItems]);
+  }, []);
 
   const handleItemChange = (index: number, field: keyof InboundItem, value: any) => {
     const currentItems = [...(palletItems[activePallet] || [])];
