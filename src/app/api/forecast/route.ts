@@ -168,10 +168,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 재고 맵 생성
-    const inventoryMap = new Map<string, { warehouse: number; coupang: number }>();
+    const inventoryMap = new Map<string, { warehouse: number; coupang: number; coupang_inbound: number; in_transit: number; order_requested: number }>();
     inventoryData?.forEach(inv => {
       if (!inventoryMap.has(inv.product_id)) {
-        inventoryMap.set(inv.product_id, { warehouse: 0, coupang: 0 });
+        inventoryMap.set(inv.product_id, { warehouse: 0, coupang: 0, coupang_inbound: 0, in_transit: 0, order_requested: 0 });
       }
       const entry = inventoryMap.get(inv.product_id)!;
       if (inv.location === 'warehouse') {
@@ -179,6 +179,64 @@ export async function GET(request: NextRequest) {
       } else if (inv.location === 'coupang') {
         entry.coupang = inv.quantity;
       }
+    });
+
+    // 2-1. 쿠팡 입고중 (inbound_items — pending/in_transit 상태)
+    const { data: inboundData } = await getSupabase()
+      .from('inbound_items')
+      .select(`
+        quantity,
+        product:products!inner(id, sku, external_sku),
+        inbound_request:inbound_requests!inner(status)
+      `)
+      .in('inbound_request.status', ['pending', 'in_transit']);
+
+    inboundData?.forEach((item: any) => {
+      const productId = item.product?.id;
+      if (!productId) return;
+      if (!inventoryMap.has(productId)) {
+        inventoryMap.set(productId, { warehouse: 0, coupang: 0, coupang_inbound: 0, in_transit: 0, order_requested: 0 });
+      }
+      inventoryMap.get(productId)!.coupang_inbound += (item.quantity || 0);
+    });
+
+    // 2-2. 선적중 (order_items — shipping/commercial_confirmed 상태)
+    const { data: inTransitData } = await getSupabase()
+      .from('order_items')
+      .select(`
+        pre_qty,
+        commercial_qty,
+        product_id,
+        order:orders!inner(status)
+      `)
+      .in('order.status', ['shipping', 'commercial_confirmed']);
+
+    inTransitData?.forEach((item: any) => {
+      const productId = item.product_id;
+      if (!productId) return;
+      if (!inventoryMap.has(productId)) {
+        inventoryMap.set(productId, { warehouse: 0, coupang: 0, coupang_inbound: 0, in_transit: 0, order_requested: 0 });
+      }
+      inventoryMap.get(productId)!.in_transit += (item.commercial_qty ?? item.pre_qty ?? 0);
+    });
+
+    // 2-3. 발주요청 (order_items — requested/pre_registered 상태)
+    const { data: orderRequestedData } = await getSupabase()
+      .from('order_items')
+      .select(`
+        pre_qty,
+        product_id,
+        order:orders!inner(status)
+      `)
+      .in('order.status', ['requested', 'pre_registered']);
+
+    orderRequestedData?.forEach((item: any) => {
+      const productId = item.product_id;
+      if (!productId) return;
+      if (!inventoryMap.has(productId)) {
+        inventoryMap.set(productId, { warehouse: 0, coupang: 0, coupang_inbound: 0, in_transit: 0, order_requested: 0 });
+      }
+      inventoryMap.get(productId)!.order_requested += (item.pre_qty ?? 0);
     });
 
     // 3. SKU -> product_id 매핑 (3단계)
@@ -436,13 +494,13 @@ export async function GET(request: NextRequest) {
     // 5. 발주 예측 데이터 생성
     // ====================================================================
     const forecastItems: ForecastItem[] = products.map(product => {
-      const inv = inventoryMap.get(product.id) || { warehouse: 0, coupang: 0 };
+      const inv = inventoryMap.get(product.id) || { warehouse: 0, coupang: 0, coupang_inbound: 0, in_transit: 0, order_requested: 0 };
       const sales = salesByProduct.get(product.id) || { d7: 0, d30: 0, d40: 0, d60: 0, d90: 0, d120: 0 };
       
       const sourceSales = salesBySource.get(product.id) || { naver: ZERO_BUCKET(), coupang_seller: ZERO_BUCKET(), coupang_rocket: ZERO_BUCKET(), other: ZERO_BUCKET() };
       const warehouseQty = inv.warehouse;
       const coupangQty = inv.coupang;
-      const totalQty = warehouseQty + coupangQty;
+      const totalQty = warehouseQty + coupangQty + inv.coupang_inbound + inv.in_transit + inv.order_requested;
 
       // 필요재고 계산: 현재 총재고 - 예상 판매량
       const need60d = totalQty - sales.d60;
