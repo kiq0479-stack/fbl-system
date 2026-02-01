@@ -182,30 +182,30 @@ type ProductSummary = { key: string; full: string; count: number; bg: string; fg
 type BrandSummary = { brand: string; icon: string; total: number; products: ProductSummary[] };
 
 function getBrandSummary(sections: Section[], dynamicMap: Map<string, ProductDef>, dbProducts: DbProduct[]): BrandSummary[] {
-  // 1. 랙에 배치된 상품 카운트
-  const rackMap = new Map<string, number>();
-  sections.forEach(sec => sec.rows.forEach(row => {
-    row.slots.forEach(slot => {
-      slot.forEach(item => { if (item.key) rackMap.set(item.key, (rackMap.get(item.key) || 0) + item.qty); });
-    });
-  }));
-
-  // 2. DB 재고 상품도 포함 (랙에 없는 것도)
-  const allKeys = new Map<string, number>();
-  rackMap.forEach((count, key) => allKeys.set(key, count));
-  dbProducts.forEach(item => {
-    if (!allKeys.has(item.sku)) {
-      allKeys.set(item.sku, item.quantity);
-    }
-  });
-
+  // DB 재고 기준으로 브랜드별 요약 (재고 현황과 일치)
   const brandMap = new Map<string, ProductSummary[]>();
 
-  allKeys.forEach((count, key) => {
-    const p = getP(key, dynamicMap);
-    if (!brandMap.has(p.brand)) brandMap.set(p.brand, []);
-    brandMap.get(p.brand)!.push({ key, full: p.full, count, bg: p.bg, fg: p.fg });
-  });
+  for (const item of dbProducts) {
+    const p = getP(item.sku, dynamicMap);
+    const brand = HARDCODED_MAP[item.sku]?.brand 
+      ?? (item.type === 'supply' ? '부자재' : inferBrand(item.name, item.category));
+    
+    if (!brandMap.has(brand)) brandMap.set(brand, []);
+    
+    // 중복 방지 (같은 SKU)
+    const existing = brandMap.get(brand)!.find(x => x.key === item.sku);
+    if (existing) {
+      existing.count += item.quantity;
+    } else {
+      brandMap.get(brand)!.push({ 
+        key: item.sku, 
+        full: p.full || item.name, 
+        count: item.quantity, 
+        bg: p.bg, 
+        fg: p.fg 
+      });
+    }
+  }
 
   brandMap.forEach(products => products.sort((a, b) => b.count - a.count));
 
