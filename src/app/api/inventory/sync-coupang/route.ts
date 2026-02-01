@@ -44,7 +44,7 @@ export async function POST() {
 
     // 상품 SKU 목록을 5개씩 병렬 조회 (API rate limit 고려)
     const BATCH_SIZE = 5;
-    const skuList = products.map(p => p.sku).filter(Boolean);
+    const skuList = products.map((p: any) => p.sku).filter(Boolean);
 
     for (const account of accounts) {
       const config = {
@@ -56,7 +56,7 @@ export async function POST() {
       for (let i = 0; i < skuList.length; i += BATCH_SIZE) {
         const batch = skuList.slice(i, i + BATCH_SIZE);
         const results = await Promise.all(
-          batch.map(async (sku) => {
+          batch.map(async (sku: string) => {
             try {
               const res = await getRocketGrowthInventory(config, config.vendorId, {
                 vendorItemId: sku,
