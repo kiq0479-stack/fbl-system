@@ -54,6 +54,7 @@ export default function ForecastPage() {
   // 숨기기 + 정렬
   const [hiddenProducts, setHiddenProducts] = useState<Set<string>>(new Set());
   const [showHidden, setShowHidden] = useState(false);
+  const [showHideButtons, setShowHideButtons] = useState(true);
   const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
 
   // localStorage에서 숨긴 상품 복원
@@ -308,6 +309,16 @@ export default function ForecastPage() {
           <span className="text-sm font-medium text-slate-700">품절 위험만</span>
         </label>
 
+        <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+          <input
+            type="checkbox"
+            checked={showHideButtons}
+            onChange={(e) => setShowHideButtons(e.target.checked)}
+            className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
+          />
+          <span className="text-sm font-medium text-slate-700">숨김 버튼</span>
+        </label>
+
         {hiddenCount > 0 && (
           <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
             <input
@@ -373,14 +384,16 @@ export default function ForecastPage() {
                       <tr className={`transition-colors ${item.stockout_risk ? 'bg-red-50/50' : ''} ${isItemExpanded ? 'bg-blue-50/30' : ''}`}>
                         <td className="px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap">
                           <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => toggleHide(item.product_id)}
-                              className={`shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 transition-colors text-xs ${hiddenProducts.has(item.product_id) ? 'text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
-                              title={hiddenProducts.has(item.product_id) ? '숨김 해제' : '숨기기'}
-                            >
-                              {hiddenProducts.has(item.product_id) ? '🙈' : '👁'}
-                            </button>
+                            {showHideButtons && (
+                              <button
+                                type="button"
+                                onClick={() => toggleHide(item.product_id)}
+                                className={`shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 transition-colors text-sm font-medium ${hiddenProducts.has(item.product_id) ? 'text-green-500 hover:text-green-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                title={hiddenProducts.has(item.product_id) ? '숨김 해제' : '숨기기'}
+                              >
+                                {hiddenProducts.has(item.product_id) ? '⊕' : '⊖'}
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => toggleItem(item.product_id)}
