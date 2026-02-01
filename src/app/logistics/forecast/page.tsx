@@ -50,6 +50,35 @@ export default function ForecastPage() {
   const [search, setSearch] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  
+  // 숨기기 + 정렬
+  const [hiddenProducts, setHiddenProducts] = useState<Set<string>>(new Set());
+  const [showHidden, setShowHidden] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
+
+  // localStorage에서 숨긴 상품 복원
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('fbl-forecast-hidden');
+      if (saved) setHiddenProducts(new Set(JSON.parse(saved)));
+    } catch {}
+  }, []);
+
+  // 숨기기 토글
+  const toggleHide = (productId: string) => {
+    setHiddenProducts(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      localStorage.setItem('fbl-forecast-hidden', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  // 정렬 토글
+  const toggleSort = () => {
+    setSortOrder(prev => prev === 'default' ? 'asc' : prev === 'asc' ? 'desc' : 'default');
+  };
 
   const toggleCategory = (cat: string) => {
     setCollapsedCategories(prev => {
@@ -97,12 +126,29 @@ export default function ForecastPage() {
     fetchForecast();
   }, [onlyRisk]);
 
-  // 검색 필터
-  const filteredItems = data?.items.filter(item => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return item.name.toLowerCase().includes(s) || item.sku.toLowerCase().includes(s);
-  }) || [];
+  // 검색 + 숨기기 필터
+  const filteredItems = (() => {
+    let items = data?.items.filter(item => {
+      // 숨김 필터
+      if (!showHidden && hiddenProducts.has(item.product_id)) return false;
+      // 검색 필터
+      if (!search) return true;
+      const s = search.toLowerCase();
+      return item.name.toLowerCase().includes(s) || item.sku.toLowerCase().includes(s);
+    }) || [];
+
+    // 정렬
+    if (sortOrder !== 'default') {
+      items = [...items].sort((a, b) => {
+        const cmp = a.name.localeCompare(b.name, 'ko');
+        return sortOrder === 'asc' ? cmp : -cmp;
+      });
+    }
+
+    return items;
+  })();
+
+  const hiddenCount = data?.items.filter(i => hiddenProducts.has(i.product_id)).length || 0;
 
   // 카테고리별 그룹핑
   const groupedByCategory = filteredItems.reduce((acc, item) => {
@@ -261,6 +307,18 @@ export default function ForecastPage() {
           />
           <span className="text-sm font-medium text-slate-700">품절 위험만</span>
         </label>
+
+        {hiddenCount > 0 && (
+          <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+            <input
+              type="checkbox"
+              checked={showHidden}
+              onChange={(e) => setShowHidden(e.target.checked)}
+              className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
+            />
+            <span className="text-sm font-medium text-slate-700">숨긴 상품 ({hiddenCount})</span>
+          </label>
+        )}
       </div>
 
       {/* 에러 표시 */}
@@ -286,7 +344,14 @@ export default function ForecastPage() {
             <table className="w-full text-sm min-w-[800px]">
               <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
                 <tr>
-                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-slate-600 whitespace-nowrap min-w-[120px]">상품명</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-slate-600 whitespace-nowrap min-w-[120px]">
+                    <button onClick={toggleSort} className="flex items-center gap-1.5 hover:text-slate-900 transition-colors">
+                      상품명
+                      <span className="text-xs">
+                        {sortOrder === 'default' ? '⇅' : sortOrder === 'asc' ? '↑' : '↓'}
+                      </span>
+                    </button>
+                  </th>
                   <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap bg-blue-50">총수량</th>
                   <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap">7일</th>
                   <th className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-600 whitespace-nowrap">30일</th>
@@ -307,20 +372,30 @@ export default function ForecastPage() {
                     <Fragment key={item.product_id}>
                       <tr className={`transition-colors ${item.stockout_risk ? 'bg-red-50/50' : ''} ${isItemExpanded ? 'bg-blue-50/30' : ''}`}>
                         <td className="px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => toggleItem(item.product_id)}
-                            className="flex items-center gap-1.5 text-left hover:opacity-80 active:opacity-60"
-                            aria-expanded={isItemExpanded}
-                          >
-                            <span className={`inline-block transition-transform text-[10px] shrink-0 text-slate-400 ${isItemExpanded ? 'rotate-90' : ''}`}>
-                              ▶
-                            </span>
-                            <span className="font-medium text-slate-900 break-keep">{item.name}</span>
-                            {item.stockout_risk && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-bold ml-1">위험</span>
-                            )}
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleHide(item.product_id)}
+                              className={`shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200 transition-colors text-xs ${hiddenProducts.has(item.product_id) ? 'text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
+                              title={hiddenProducts.has(item.product_id) ? '숨김 해제' : '숨기기'}
+                            >
+                              {hiddenProducts.has(item.product_id) ? '🙈' : '👁'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleItem(item.product_id)}
+                              className={`flex items-center gap-1.5 text-left hover:opacity-80 active:opacity-60 ${hiddenProducts.has(item.product_id) ? 'opacity-40' : ''}`}
+                              aria-expanded={isItemExpanded}
+                            >
+                              <span className={`inline-block transition-transform text-[10px] shrink-0 text-slate-400 ${isItemExpanded ? 'rotate-90' : ''}`}>
+                                ▶
+                              </span>
+                              <span className="font-medium text-slate-900 break-keep">{item.name}</span>
+                              {item.stockout_risk && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs font-bold ml-1">위험</span>
+                              )}
+                            </button>
+                          </div>
                         </td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-900 bg-blue-50/50">{formatNumber(item.total_qty)}</td>
                         <td className="px-2 sm:px-4 py-2 sm:py-3 text-right text-slate-600">{formatNumber(item.sales_7d)}</td>
