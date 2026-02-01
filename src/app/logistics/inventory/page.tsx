@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { InventoryLocation } from '@/types/database';
 import InventoryModal from '@/components/inventory/InventoryModal';
 import WarehouseEditModal from '@/components/inventory/WarehouseEditModal';
+import SupplyEditModal from '@/components/inventory/SupplyEditModal';
 
 type InventoryItem = {
   id: string;
@@ -86,6 +87,7 @@ export default function InventoryPage() {
   const [modalType, setModalType] = useState<'in' | 'out' | 'transfer' | null>(null);
   const [syncingCoupang, setSyncingCoupang] = useState(false);
   const [editingWarehouseItem, setEditingWarehouseItem] = useState<InventoryItem | null>(null);
+  const [editingSupplyItem, setEditingSupplyItem] = useState<InventoryItem | null>(null);
   const [selectedProductSku, setSelectedProductSku] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedSupplySku, setSelectedSupplySku] = useState<string | null>(null);
@@ -747,7 +749,7 @@ export default function InventoryPage() {
           <table className="w-full min-w-[500px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[120px]">
+                <th className={`px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider ${activeTab === 'supply' ? 'max-w-[160px]' : 'min-w-[120px]'}`}>
                   {activeTab === 'product' ? '상품명' : '부자재명'}
                 </th>
                 <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">옵션ID</th>
@@ -757,7 +759,7 @@ export default function InventoryPage() {
                 )}
                 <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">랙 위치</th>
                 <th className="px-3 sm:px-6 py-2 sm:py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">최종 수정</th>
-                {locationFilter === 'warehouse' && activeTab === 'product' && (
+                {locationFilter === 'warehouse' && (activeTab === 'product' || activeTab === 'supply') && (
                   <th className="px-3 sm:px-6 py-2 sm:py-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">수정</th>
                 )}
               </tr>
@@ -765,16 +767,16 @@ export default function InventoryPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={locationFilter === 'warehouse' && activeTab === 'product' ? 7 : 5} className="px-3 sm:px-6 py-12 text-center text-slate-400">로딩중...</td>
+                  <td colSpan={locationFilter === 'warehouse' ? 7 : 5} className="px-3 sm:px-6 py-12 text-center text-slate-400">로딩중...</td>
                 </tr>
               ) : sortedInventory.length === 0 ? (
                 <tr>
-                  <td colSpan={locationFilter === 'warehouse' && activeTab === 'product' ? 7 : 5} className="px-3 sm:px-6 py-12 text-center text-slate-400">재고 데이터가 없습니다</td>
+                  <td colSpan={locationFilter === 'warehouse' ? 7 : 5} className="px-3 sm:px-6 py-12 text-center text-slate-400">재고 데이터가 없습니다</td>
                 </tr>
               ) : (
                 sortedInventory.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-3 sm:px-6 py-2 sm:py-4 text-sm font-medium">
+                    <td className={`px-3 sm:px-6 py-2 sm:py-4 text-sm font-medium ${activeTab === 'supply' ? 'max-w-[160px]' : ''}`}>
                       <button
                         onClick={() => {
                           if (activeTab === 'product' && item.products?.sku) {
@@ -805,6 +807,16 @@ export default function InventoryPage() {
                       <td className="px-3 sm:px-6 py-2 sm:py-4 text-center">
                         <button
                           onClick={() => setEditingWarehouseItem(item)}
+                          className="px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          수정
+                        </button>
+                      </td>
+                    )}
+                    {locationFilter === 'warehouse' && activeTab === 'supply' && (
+                      <td className="px-3 sm:px-6 py-2 sm:py-4 text-center">
+                        <button
+                          onClick={() => setEditingSupplyItem(item)}
                           className="px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                           수정
@@ -919,6 +931,21 @@ export default function InventoryPage() {
           onClose={() => setEditingWarehouseItem(null)}
           onSuccess={() => {
             setEditingWarehouseItem(null);
+            fetchInventory();
+          }}
+        />
+      )}
+
+      {/* 부자재 재고 수정 모달 */}
+      {editingSupplyItem && editingSupplyItem.supply_id && (
+        <SupplyEditModal
+          inventoryId={editingSupplyItem.id}
+          supplyName={getName(editingSupplyItem)}
+          currentQuantity={editingSupplyItem.quantity}
+          currentRackPosition={editingSupplyItem.rack_position}
+          onClose={() => setEditingSupplyItem(null)}
+          onSuccess={() => {
+            setEditingSupplyItem(null);
             fetchInventory();
           }}
         />
