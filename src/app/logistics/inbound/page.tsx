@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { InboundRequest, InboundStatus, InboundItem, VENDORS } from '@/types/database';
 
 export default function InboundPage() {
@@ -132,6 +133,32 @@ export default function InboundPage() {
     }
   };
 
+  const supabaseClient = createClient();
+
+  // 옵션ID로 상품명 자동 조회
+  const lookupProductByOptionId = useCallback(async (optionId: string, palletNum: number, itemIndex: number) => {
+    if (!optionId.trim()) return;
+    try {
+      const { data } = await supabaseClient
+        .from('product_mappings')
+        .select('external_option_name, products(name)')
+        .eq('external_option_id', optionId.trim())
+        .limit(1)
+        .single();
+
+      if (data) {
+        const productName = (data as any).products?.name || (data as any).external_option_name || '';
+        if (productName) {
+          const currentItems = [...(palletItems[palletNum] || [])];
+          currentItems[itemIndex] = { ...currentItems[itemIndex], product_name: productName };
+          setPalletItems(prev => ({ ...prev, [palletNum]: currentItems }));
+        }
+      }
+    } catch {
+      // 매칭 없으면 무시
+    }
+  }, [palletItems]);
+
   const handleItemChange = (index: number, field: keyof InboundItem, value: any) => {
     const currentItems = [...(palletItems[activePallet] || [])];
     currentItems[index] = { ...currentItems[index], [field]: value };
@@ -139,6 +166,14 @@ export default function InboundPage() {
       ...palletItems,
       [activePallet]: currentItems
     });
+
+    // 옵션ID 입력 시 상품명 자동 조회
+    if (field === 'sku' && typeof value === 'string' && value.length >= 4) {
+      const timeoutId = setTimeout(() => {
+        lookupProductByOptionId(value, activePallet, index);
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -609,7 +644,7 @@ export default function InboundPage() {
                     <thead className="bg-slate-50">
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">파레트</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">SKU</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">옵션ID</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">상품명</th>
                         <th className="px-4 py-2 text-right text-xs font-medium text-slate-500">박스</th>
                         <th className="px-4 py-2 text-right text-xs font-medium text-slate-500">수량</th>
@@ -815,7 +850,7 @@ export default function InboundPage() {
                     <thead className="bg-slate-50">
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 w-16">No.</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 w-32">SKU</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 w-32">옵션ID</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">상품명</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 w-24">박스수</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 w-24">수량</th>
@@ -832,7 +867,7 @@ export default function InboundPage() {
                               value={item.sku || ''}
                               onChange={(e) => handleItemChange(index, 'sku', e.target.value)}
                               className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
-                              placeholder="58911087"
+                              placeholder="옵션ID 입력"
                             />
                           </td>
                           <td className="px-4 py-2">
@@ -1061,7 +1096,7 @@ export default function InboundPage() {
                     <thead className="bg-slate-50">
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 w-16">No.</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 w-32">SKU</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 w-32">옵션ID</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">상품명</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 w-24">박스수</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 w-24">수량</th>
@@ -1078,7 +1113,7 @@ export default function InboundPage() {
                               value={item.sku || ''}
                               onChange={(e) => handleItemChange(index, 'sku', e.target.value)}
                               className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
-                              placeholder="58911087"
+                              placeholder="옵션ID 입력"
                             />
                           </td>
                           <td className="px-4 py-2">
