@@ -299,36 +299,36 @@ export default function ForecastPage() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+        <div className="flex items-center gap-2 overflow-x-auto">
+          <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors shrink-0">
             <input
               type="checkbox"
               checked={onlyRisk}
               onChange={(e) => setOnlyRisk(e.target.checked)}
               className="w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-red-500"
             />
-            <span className="text-sm font-medium text-slate-700">품절 위험만</span>
+            <span className="text-sm font-medium text-slate-700 whitespace-nowrap">품절 위험만</span>
           </label>
 
-          <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+          <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors shrink-0">
             <input
               type="checkbox"
               checked={showHideButtons}
               onChange={(e) => setShowHideButtons(e.target.checked)}
               className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
             />
-            <span className="text-sm font-medium text-slate-700">숨김 버튼</span>
+            <span className="text-sm font-medium text-slate-700 whitespace-nowrap">숨김 버튼</span>
           </label>
 
           {hiddenCount > 0 && (
-            <label className="flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors">
+            <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors shrink-0">
               <input
                 type="checkbox"
                 checked={showHidden}
                 onChange={(e) => setShowHidden(e.target.checked)}
                 className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
               />
-              <span className="text-sm font-medium text-slate-700">숨긴 상품 ({hiddenCount})</span>
+              <span className="text-sm font-medium text-slate-700 whitespace-nowrap">숨긴 상품 ({hiddenCount})</span>
             </label>
           )}
         </div>
