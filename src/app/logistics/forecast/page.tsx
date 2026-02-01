@@ -320,17 +320,15 @@ export default function ForecastPage() {
             <span className="text-sm font-medium text-slate-700 whitespace-nowrap">숨김 버튼</span>
           </label>
 
-          {hiddenCount > 0 && (
-            <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors shrink-0">
-              <input
-                type="checkbox"
-                checked={showHidden}
-                onChange={(e) => setShowHidden(e.target.checked)}
-                className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
-              />
-              <span className="text-sm font-medium text-slate-700 whitespace-nowrap">숨긴 상품 ({hiddenCount})</span>
-            </label>
-          )}
+          <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors shrink-0">
+            <input
+              type="checkbox"
+              checked={showHidden}
+              onChange={(e) => setShowHidden(e.target.checked)}
+              className="w-4 h-4 text-slate-600 rounded border-slate-300 focus:ring-slate-500"
+            />
+            <span className="text-sm font-medium text-slate-700 whitespace-nowrap">숨긴 상품 ({hiddenCount})</span>
+          </label>
         </div>
       </div>
 
