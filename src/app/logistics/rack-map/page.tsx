@@ -225,28 +225,21 @@ export default function RackMapPage() {
             </button>
 
             {expandedBrand === b.brand && (
-              <div className="border-t border-slate-100 px-4 py-2 space-y-1.5">
-                {b.products.map(p => (
-                  <div key={p.key} className="flex items-start gap-2 py-1">
-                    <span
-                      className="inline-block shrink-0 text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded mt-0.5"
-                      style={{ backgroundColor: p.bg, color: p.fg }}
+              <div className="border-t border-slate-100 px-3 py-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {b.products.map(p => (
+                    <button
+                      key={p.key}
+                      className={`text-[10px] sm:text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
+                        highlight === p.key ? 'ring-2 ring-offset-1 ring-slate-900 scale-105' : ''
+                      }`}
+                      style={{ backgroundColor: p.bg, color: p.fg, borderColor: 'rgba(0,0,0,0.1)' }}
+                      onClick={() => setHighlight(highlight === p.key ? null : p.key)}
                     >
                       {p.full} {p.count}P
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {p.locations.map(loc => (
-                        <button
-                          key={loc}
-                          className="text-[10px] sm:text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                          onClick={() => scrollToRow(loc)}
-                        >
-                          {loc}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
